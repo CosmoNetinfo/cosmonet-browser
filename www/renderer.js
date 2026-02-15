@@ -1,3 +1,33 @@
+// Rileva ambiente
+const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.onNewTab !== undefined;
+
+// Mock per ambienti non-Electron (Android/Capacitor)
+if (!isElectron) {
+    window.electronAPI = {
+        loadSettings: async () => {
+            try {
+                return JSON.parse(localStorage.getItem('cosmo_settings') || 'null');
+            } catch(e) { return null; }
+        },
+        saveSettings: async (settings) => localStorage.setItem('cosmo_settings', JSON.stringify(settings)),
+        loadBookmarks: async () => {
+            try {
+                return JSON.parse(localStorage.getItem('cosmo_bookmarks') || '[]');
+            } catch(e) { return []; }
+        },
+        saveBookmarks: async (bookmarks) => localStorage.setItem('cosmo_bookmarks', JSON.stringify(bookmarks)),
+        loadHistory: async () => {
+            try {
+                return JSON.parse(localStorage.getItem('cosmo_history') || '[]');
+            } catch(e) { return []; }
+        },
+        saveHistory: async (history) => localStorage.setItem('cosmo_history', JSON.stringify(history)),
+        onNewTab: (cb) => {},
+        onCloseTab: (cb) => {},
+        onReloadTab: (cb) => {},
+        onNavigateTo: (cb) => {}
+    };
+}
 
 // Configurazione di default
 let config = {
@@ -349,12 +379,98 @@ function switchToTab(tabId) {
                 currentUrl = tab.url;
             }
         } else {
-            currentUrl = tab.url; // Gli iframe hanno restrizioni di sicurezza cross-origin
+            currentUrl = tab.url;
         }
         
         updateUrlBar(currentUrl);
         updateNavigationButtons();
         updateBookmarkButton();
+    }
+}
+
+function closeTab(tabId) {
+    const tabIndex = tabs.findIndex(t => t.id === tabId);
+    if (tabIndex === -1) return;
+    
+    const tab = tabs[tabIndex];
+    tab.webview.remove();
+    document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
+    
+    tabs.splice(tabIndex, 1);
+    
+    if (tabs.length === 0) {
+        if (isElectron) window.close();
+        else createTab(config.homeUrl);
+        return;
+    }
+    
+    if (tabId === activeTabId) {
+        const newActiveTab = tabs[Math.min(tabIndex, tabs.length - 1)];
+        switchToTab(newActiveTab.id);
+    }
+}
+
+function updateTabTitle(tabId, title) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) {
+        tab.title = title || 'Senza titolo';
+        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+        if (tabElement) {
+            const titleElement = tabElement.querySelector('.tab-title');
+            if (titleElement) titleElement.textContent = tab.title;
+        }
+    }
+}
+
+function updateTabFavicon(tabId, favicon) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) {
+        tab.favicon = favicon;
+        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+        if (tabElement) {
+            const faviconElement = tabElement.querySelector('.tab-favicon');
+            if (faviconElement) faviconElement.src = favicon;
+        }
+    }
+}
+
+function updateTabLoading(tabId, isLoading) {
+    const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+    if (tabElement) {
+        tabElement.style.opacity = isLoading ? '0.7' : '1';
+    }
+}
+
+function updateTabInfo(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && isElectron) {
+        updateTabTitle(tabId, tab.webview.getTitle());
+        tab.url = tab.webview.getURL();
+    }
+}
+
+function updateUrlBar(url) {
+    if (url && !url.startsWith('about:')) {
+        urlBar.value = url;
+    }
+}
+
+function updateNavigationButtons() {
+    const webview = getActiveWebview();
+    if (webview) {
+        if (isElectron) {
+            try {
+                backBtn.disabled = !webview.canGoBack();
+                forwardBtn.disabled = !webview.canGoForward();
+            } catch (e) {
+                backBtn.disabled = true;
+                forwardBtn.disabled = true;
+            }
+        } else {
+            // Su mobile (iframe) non possiamo sapere se si può tornare indietro
+            backBtn.disabled = false;
+            forwardBtn.disabled = false;
+        }
     }
 }
 
