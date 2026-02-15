@@ -24,6 +24,7 @@
     "directories": {
       "output": "dist"
     },
+    "asar": true,
     "files": [
       "**/*",
       "!dist",

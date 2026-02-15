@@ -1,3 +1,4 @@
+
 // Configurazione di default
 let config = {
     homeUrl: 'https://www.cosmonet.info/',
@@ -201,22 +202,32 @@ function renderTab(tab) {
     tabElement.className = 'tab';
     tabElement.dataset.tabId = tab.id;
     
-    // Icona di default se non presente
     const defaultFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
     
-    tabElement.innerHTML = `
-        <img class="tab-favicon" src="${tab.favicon || defaultFavicon}" onerror="this.src='${defaultFavicon}'" />
-        <span class="tab-title"></span>
-        <button class="tab-close">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
+    // Icona
+    const faviconImg = document.createElement('img');
+    faviconImg.className = 'tab-favicon';
+    faviconImg.src = tab.favicon || defaultFavicon;
+    faviconImg.onerror = () => { faviconImg.src = defaultFavicon; };
+    
+    // Titolo
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'tab-title';
+    titleSpan.textContent = tab.title || 'Nuova Tab';
+    
+    // Bottone chiusura
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
     `;
     
-    // Impostiamo il titolo in modo sicuro tramite textContent
-    tabElement.querySelector('.tab-title').textContent = tab.title || 'Nuova Tab';
+    tabElement.appendChild(faviconImg);
+    tabElement.appendChild(titleSpan);
+    tabElement.appendChild(closeBtn);
     
     tabElement.addEventListener('click', (e) => {
         if (!e.target.closest('.tab-close')) {
@@ -224,7 +235,7 @@ function renderTab(tab) {
         }
     });
     
-    tabElement.querySelector('.tab-close').addEventListener('click', (e) => {
+    closeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeTab(tab.id);
     });
