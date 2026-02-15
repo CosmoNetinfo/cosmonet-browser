@@ -176,26 +176,45 @@ function setupEventListeners() {
 }
 
 // Gestione tabs
-function createTab(url = HOME_URL) {
+function createTab(url = config.homeUrl) {
     const tabId = Date.now().toString();
     
-    // Crea webview
-    const webview = document.createElement('webview');
+    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web)
+    let webview;
+    if (isElectron) {
+        webview = document.createElement('webview');
+        webview.setAttribute('allowpopups', '');
+        webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    } else {
+        webview = document.createElement('iframe');
+        webview.style.border = 'none';
+        webview.style.width = '100%';
+        webview.style.height = '100%';
+    }
+    
     webview.id = `webview-${tabId}`;
     webview.src = url;
-    webview.setAttribute('allowpopups', '');
-    // User Agent più completo per evitare blocchi
-    webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
-    // Event listeners webview
-    webview.addEventListener('did-start-loading', () => {
-        updateTabLoading(tabId, true);
-    });
-    
-    webview.addEventListener('did-stop-loading', () => {
-        updateTabLoading(tabId, false);
-        updateTabInfo(tabId);
-    });
+    // Event listeners comuni o specifici
+    if (isElectron) {
+        webview.addEventListener('did-start-loading', () => updateTabLoading(tabId, true));
+        webview.addEventListener('did-stop-loading', () => {
+            updateTabLoading(tabId, false);
+            updateTabInfo(tabId);
+        });
+        webview.addEventListener('page-title-updated', (e) => updateTabTitle(tabId, e.title));
+        webview.addEventListener('did-navigate', (e) => {
+            updateUrlBar(e.url);
+            addToHistory(e.url, webview.getTitle());
+            updateNavigationButtons();
+        });
+    } else {
+        // Fallback per iframe (Android)
+        webview.addEventListener('load', () => {
+            updateTabLoading(tabId, false);
+            updateTabTitle(tabId, "Pagina caricata"); // Limitazione iframe: non possiamo leggere il titolo cross-origin
+        });
+    }
 
     webview.addEventListener('did-fail-load', (e) => {
         console.error('Fallimento caricamento:', e);
@@ -308,7 +327,7 @@ function renderTab(tab) {
 function switchToTab(tabId) {
     // Deseleziona tutte le tabs
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('webview').forEach(w => w.classList.remove('active'));
+    document.querySelectorAll('webview, iframe').forEach(w => w.classList.remove('active'));
     
     // Attiva tab selezionata
     const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
@@ -321,82 +340,21 @@ function switchToTab(tabId) {
         tab.webview.classList.add('active');
         activeTabId = tabId;
         
-        // Gestione errore se la webview non è ancora pronta
+        // Gestione URL per la barra degli indirizzi
         let currentUrl = '';
-        try {
-            currentUrl = tab.webview.getURL();
-        } catch (e) {
-            currentUrl = tab.url; // Usa l'URL salvato se getURL() fallisce
+        if (isElectron) {
+            try {
+                currentUrl = tab.webview.getURL();
+            } catch (e) {
+                currentUrl = tab.url;
+            }
+        } else {
+            currentUrl = tab.url; // Gli iframe hanno restrizioni di sicurezza cross-origin
         }
         
         updateUrlBar(currentUrl);
         updateNavigationButtons();
         updateBookmarkButton();
-    }
-}
-
-function closeTab(tabId) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
-    
-    // Rimuovi webview e tab element
-    const tab = tabs[tabIndex];
-    tab.webview.remove();
-    document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
-    
-    // Rimuovi da array
-    tabs.splice(tabIndex, 1);
-    
-    // Se era l'ultima tab, chiudi il browser
-    if (tabs.length === 0) {
-        window.close();
-        return;
-    }
-    
-    // Switch a tab adiacente
-    if (tabId === activeTabId) {
-        const newActiveTab = tabs[Math.min(tabIndex, tabs.length - 1)];
-        switchToTab(newActiveTab.id);
-    }
-}
-
-function updateTabTitle(tabId, title) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab) {
-        tab.title = title || 'Senza titolo';
-        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
-        if (tabElement) {
-            const titleElement = tabElement.querySelector('.tab-title');
-            if (titleElement) {
-                titleElement.textContent = tab.title;
-            }
-        }
-    }
-}
-
-function updateTabFavicon(tabId, favicon) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab) {
-        tab.favicon = favicon;
-        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
-        if (tabElement) {
-            const faviconElement = tabElement.querySelector('.tab-favicon');
-            if (faviconElement) {
-                faviconElement.src = favicon;
-            }
-        }
-    }
-}
-
-function updateTabLoading(tabId, isLoading) {
-    // Potresti aggiungere un indicatore di caricamento qui
-}
-
-function updateTabInfo(tabId) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab && tab.webview) {
-        updateTabTitle(tabId, tab.webview.getTitle());
-        tab.url = tab.webview.getURL();
     }
 }
 
@@ -415,27 +373,16 @@ function navigateToUrl(input) {
         }
     }
     
-    const webview = getActiveWebview();
-    if (webview) {
-        webview.src = url;
-    }
-}
-
-function updateUrlBar(url) {
-    if (url && !url.startsWith('about:')) {
-        urlBar.value = url;
-    }
-}
-
-function updateNavigationButtons() {
-    const webview = getActiveWebview();
-    if (webview) {
-        try {
-            backBtn.disabled = !webview.canGoBack();
-            forwardBtn.disabled = !webview.canGoForward();
-        } catch (e) {
-            backBtn.disabled = true;
-            forwardBtn.disabled = true;
+    const contentElement = getActiveWebview();
+    if (contentElement) {
+        contentElement.src = url;
+        // Salva l'URL nella tab per Android
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) tab.url = url;
+        
+        if (!isElectron) {
+            updateUrlBar(url);
+            addToHistory(url, "Navigazione Android");
         }
     }
 }

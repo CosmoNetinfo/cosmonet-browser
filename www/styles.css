@@ -48,6 +48,106 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  background: white; /* Spostato da inline */
+  padding: 2px;      /* Spostato da inline */
+  border-radius: 6px; /* Spostato da inline */
+}
+
+/* Settings Styles */
+.settings-group {
+  margin-bottom: 20px;
+}
+
+.settings-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.settings-group input[type="text"],
+.settings-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.settings-group input[type="text"]:focus,
+.settings-group select:focus {
+  border-color: #2563eb;
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 20px 0;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Dark Mode Preview */
+body.dark-mode {
+  background: #111827;
+}
+
+body.dark-mode .tabs-container {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+body.dark-mode .tab {
+  background: #374151;
+  color: #9ca3af;
+}
+
+body.dark-mode .tab.active {
+  background: #111827;
+  color: white;
+}
+
+body.dark-mode .side-panel {
+  background: #1f2937;
+  color: white;
+}
+
+body.dark-mode .settings-group label {
+  color: #e5e7eb;
+}
+
+body.dark-mode .bookmark-item, 
+body.dark-mode .history-item {
+  background: #374151;
+}
+
+body.dark-mode .bookmark-title, 
+body.dark-mode .history-title {
+  color: white;
 }
 
 .brand-name {
@@ -136,32 +236,30 @@ body {
 .tabs-bar {
   display: flex;
   overflow-x: auto;
-  padding: 5px 10px 0;
+  padding: 0 10px;
   gap: 5px;
+  height: 38px;
+  align-items: flex-end;
 }
 
 .tabs-bar::-webkit-scrollbar {
-  height: 4px;
-}
-
-.tabs-bar::-webkit-scrollbar-thumb {
-  background: #9ca3af;
-  border-radius: 2px;
+  display: none;
 }
 
 .tab {
   background: #d1d5db;
   border: none;
-  padding: 10px 15px;
-  border-radius: 8px 8px 0 0;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 6px 6px 0 0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 120px;
-  max-width: 240px;
-  flex: 1 1 0px;
-  font-size: 13px;
+  max-width: 200px;
+  flex: 0 1 auto;
+  font-size: 12px;
   color: #4b5563;
   transition: all 0.2s;
   position: relative;
@@ -211,19 +309,22 @@ body {
 /* Webviews */
 .webviews-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   position: relative;
   background: white;
 }
 
 webview {
-  position: absolute;
+  flex: 1;
   width: 100%;
   height: 100%;
   display: none;
+  border: none;
 }
 
 webview.active {
-  display: block;
+  display: flex;
 }
 
 /* Side Panels */
@@ -403,3 +504,248 @@ webview.active {
 .panel-content::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+
+/* CosmoNet Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  top: 60px;
+  right: 15px;
+  width: 280px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: none;
+  flex-direction: column;
+  padding: 8px 0;
+  z-index: 3000;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu.visible {
+  display: flex !important;
+}
+
+.menu-item {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.menu-item:hover {
+  background: #f3f4f6;
+}
+
+.menu-item .shortcut {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 8px 0;
+}
+
+/* CosmoNet Settings Page Full Support */
+.settings-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: 4000;
+  display: none;
+  flex-direction: column;
+}
+
+.settings-page.open {
+  display: flex !important;
+}
+
+.settings-navbar {
+  height: 64px;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.back-btn-settings {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: 16px;
+  display: flex;
+}
+
+.settings-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.settings-sidebar {
+  width: 260px;
+  border-right: 1px solid #e5e7eb;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+.settings-sidebar-item {
+  padding: 12px 24px;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.settings-sidebar-item:hover {
+  background: #f3f4f6;
+  color: #2563eb;
+}
+
+.settings-sidebar-item.active {
+  background: #ebf5ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-right: 3px solid #2563eb;
+}
+
+.settings-main-content {
+  flex: 1;
+  padding: 48px;
+  overflow-y: auto;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.settings-section-container {
+  display: none;
+}
+
+.settings-section-container.active {
+  display: block;
+}
+
+.settings-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.settings-card h3 {
+  margin-top: 0;
+  margin-bottom: 24px;
+  font-size: 18px;
+  color: #111827;
+}
+
+.settings-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.settings-option:last-child {
+  border-bottom: none;
+}
+
+.option-text h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.option-text p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cosmo-input {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+  width: 250px;
+}
+
+.cosmo-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  outline: none;
+  font-size: 14px;
+}
+
+body.dark-mode .dropdown-menu {
+  background: #1f2937;
+  border-color: #374151;
+  color: white;
+}
+
+body.dark-mode .menu-item { color: #e5e7eb; }
+body.dark-mode .menu-item:hover { background: #374151; }
+body.dark-mode .settings-page { background: #111827; }
+body.dark-mode .settings-sidebar { background: #1f2937; border-color: #374151; }
+body.dark-mode .settings-sidebar-item { color: #9ca3af; }
+body.dark-mode .settings-sidebar-item:hover { color: white; background: #374151; }
+body.dark-mode .settings-card { background: #1f2937; border-color: #374151; }
+body.dark-mode .settings-card h3 { color: white; }
+body.dark-mode .option-text h4 { color: #f3f4f6; }
+body.dark-mode .cosmo-input, body.dark-mode .cosmo-select { background: #374151; color: white; border-color: #4b5563; }
+
+.settings-brand {
+  margin-right: 20px;
+  font-weight: 700;
+  font-size: 1.1em;
+  color: white;
+}
+
+.settings-footer {
+  padding: 20px;
+  text-align: right;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.settings-footer-btn {
+  width: auto;
+  padding: 10px 30px;
+}
+
+body.dark-mode .settings-footer {
+  background: #111827;
+  border-color: #374151;
+}
+
+

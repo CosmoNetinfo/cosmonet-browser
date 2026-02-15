@@ -1,6 +1,10 @@
-// Configurazione
-const HOME_URL = 'https://www.cosmonet.info/';
-const SEARCH_ENGINE = 'https://www.google.com/search?q=';
+
+// Configurazione di default
+let config = {
+    homeUrl: 'https://www.cosmonet.info/',
+    searchEngine: 'https://www.google.com/search?q=',
+    darkMode: false
+};
 
 // Stato del browser
 let tabs = [];
@@ -16,30 +20,49 @@ const reloadBtn = document.getElementById('reload-btn');
 const homeBtn = document.getElementById('home-btn');
 const bookmarkBtn = document.getElementById('bookmark-btn');
 const newTabBtn = document.getElementById('new-tab-btn');
+const menuBtn = document.getElementById('menu-btn');
+const mainMenu = document.getElementById('main-menu');
 const bookmarksBtn = document.getElementById('bookmarks-btn');
 const historyBtn = document.getElementById('history-btn');
 const tabsBar = document.getElementById('tabs-bar');
 const webviewsContainer = document.getElementById('webviews-container');
 const bookmarksPanel = document.getElementById('bookmarks-panel');
 const historyPanel = document.getElementById('history-panel');
+const settingsPage = document.getElementById('settings-page');
 const bookmarksList = document.getElementById('bookmarks-list');
 const historyList = document.getElementById('history-list');
 
+// Elementi Impostazioni (Nuova Pagina)
+const settingHomeUrlPage = document.getElementById('setting-home-url-page');
+const settingSearchEnginePage = document.getElementById('setting-search-engine-page');
+const settingDarkModePage = document.getElementById('setting-dark-mode-page');
+const saveAllSettingsBtn = document.getElementById('save-all-settings-btn');
+const closeSettingsPageBtn = document.getElementById('close-settings-page-btn');
+
 // Inizializzazione
 async function init() {
-    // Carica segnalibri e cronologia
+    // Carica impostazioni, segnalibri e cronologia
+    const savedSettings = await window.electronAPI.loadSettings();
+    if (savedSettings) {
+        config = { ...config, ...savedSettings };
+    }
+    
     bookmarks = await window.electronAPI.loadBookmarks();
     history = await window.electronAPI.loadHistory();
+    
+    // Applica impostazioni iniziali
+    applySettings();
     
     // Event listeners
     setupEventListeners();
     
-    // Crea prima tab (dopo gli indicatori)
-    createTab(HOME_URL);
+    // Crea prima tab
+    createTab(config.homeUrl);
     
     // Aggiorna UI
     renderBookmarks();
     renderHistory();
+    updateSettingsUI();
 }
 
 function setupEventListeners() {
@@ -61,17 +84,81 @@ function setupEventListeners() {
     backBtn.addEventListener('click', () => getActiveWebview()?.goBack());
     forwardBtn.addEventListener('click', () => getActiveWebview()?.goForward());
     reloadBtn.addEventListener('click', () => getActiveWebview()?.reload());
-    homeBtn.addEventListener('click', () => navigateToUrl(HOME_URL));
+    homeBtn.addEventListener('click', () => navigateToUrl(config.homeUrl));
     
-    // Segnalibri e cronologia
+    // Segnalibri e cronologia (Accesso rapido)
     bookmarkBtn.addEventListener('click', toggleBookmark);
     bookmarksBtn.addEventListener('click', () => togglePanel(bookmarksPanel));
     historyBtn.addEventListener('click', () => togglePanel(historyPanel));
     
-    // Nuova tab
-    newTabBtn.addEventListener('click', () => createTab(HOME_URL));
+    // Menu a comparsa
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mainMenu.classList.toggle('visible');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!mainMenu.contains(e.target) && e.target !== menuBtn) {
+            mainMenu.classList.remove('visible');
+        }
+    });
+
+    // Azioni Menu
+    document.getElementById('menu-new-tab').addEventListener('click', () => {
+        createTab(config.homeUrl);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-new-window').addEventListener('click', () => {
+        // Opzionale: implementare nuova finestra reale se necessario
+        createTab(config.homeUrl);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-history').addEventListener('click', () => {
+        togglePanel(historyPanel);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-bookmarks').addEventListener('click', () => {
+        togglePanel(bookmarksPanel);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-settings').addEventListener('click', () => {
+        settingsPage.classList.add('open');
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-exit').addEventListener('click', () => {
+        window.close();
+    });
+
+    // Gestione Pagina Impostazioni
+    closeSettingsPageBtn.addEventListener('click', () => {
+        settingsPage.classList.remove('open');
+    });
+
+    saveAllSettingsBtn.addEventListener('click', saveSettings);
+
+    document.querySelectorAll('.settings-sidebar-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionId = item.dataset.section;
+            
+            // Update active sidebar item
+            document.querySelectorAll('.settings-sidebar-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // Update visible section
+            document.querySelectorAll('.settings-section-container').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${sectionId}`).classList.add('active');
+        });
+    });
     
-    // Chiusura pannelli
+    // Nuova tab
+    newTabBtn.addEventListener('click', () => createTab(config.homeUrl));
+    
+    // Chiusura pannelli laterali
     document.querySelectorAll('.close-panel-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.target.closest('.side-panel').classList.remove('open');
@@ -81,34 +168,53 @@ function setupEventListeners() {
     // Cancella cronologia
     document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
     
-    // IPC da menu
-    window.electronAPI.onNewTab(() => createTab(HOME_URL));
+    // IPC da menu di sistema
+    window.electronAPI.onNewTab(() => createTab(config.homeUrl));
     window.electronAPI.onCloseTab(() => closeTab(activeTabId));
     window.electronAPI.onReloadTab(() => getActiveWebview()?.reload());
     window.electronAPI.onNavigateTo((url) => navigateToUrl(url));
 }
 
 // Gestione tabs
-function createTab(url = HOME_URL) {
+function createTab(url = config.homeUrl) {
     const tabId = Date.now().toString();
     
-    // Crea webview
-    const webview = document.createElement('webview');
+    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web)
+    let webview;
+    if (isElectron) {
+        webview = document.createElement('webview');
+        webview.setAttribute('allowpopups', '');
+        webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    } else {
+        webview = document.createElement('iframe');
+        webview.style.border = 'none';
+        webview.style.width = '100%';
+        webview.style.height = '100%';
+    }
+    
     webview.id = `webview-${tabId}`;
     webview.src = url;
-    webview.setAttribute('allowpopups', '');
-    // User Agent più completo per evitare blocchi
-    webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
-    // Event listeners webview
-    webview.addEventListener('did-start-loading', () => {
-        updateTabLoading(tabId, true);
-    });
-    
-    webview.addEventListener('did-stop-loading', () => {
-        updateTabLoading(tabId, false);
-        updateTabInfo(tabId);
-    });
+    // Event listeners comuni o specifici
+    if (isElectron) {
+        webview.addEventListener('did-start-loading', () => updateTabLoading(tabId, true));
+        webview.addEventListener('did-stop-loading', () => {
+            updateTabLoading(tabId, false);
+            updateTabInfo(tabId);
+        });
+        webview.addEventListener('page-title-updated', (e) => updateTabTitle(tabId, e.title));
+        webview.addEventListener('did-navigate', (e) => {
+            updateUrlBar(e.url);
+            addToHistory(e.url, webview.getTitle());
+            updateNavigationButtons();
+        });
+    } else {
+        // Fallback per iframe (Android)
+        webview.addEventListener('load', () => {
+            updateTabLoading(tabId, false);
+            updateTabTitle(tabId, "Pagina caricata"); // Limitazione iframe: non possiamo leggere il titolo cross-origin
+        });
+    }
 
     webview.addEventListener('did-fail-load', (e) => {
         console.error('Fallimento caricamento:', e);
@@ -177,16 +283,32 @@ function renderTab(tab) {
     tabElement.className = 'tab';
     tabElement.dataset.tabId = tab.id;
     
-    tabElement.innerHTML = `
-        <img class="tab-favicon" src="${tab.favicon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'}" />
-        <span class="tab-title">${escapeHtml(tab.title)}</span>
-        <button class="tab-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
+    const defaultFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
+    
+    // Icona
+    const faviconImg = document.createElement('img');
+    faviconImg.className = 'tab-favicon';
+    faviconImg.src = tab.favicon || defaultFavicon;
+    faviconImg.onerror = () => { faviconImg.src = defaultFavicon; };
+    
+    // Titolo
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'tab-title';
+    titleSpan.textContent = tab.title || 'Nuova Tab';
+    
+    // Bottone chiusura
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
     `;
+    
+    tabElement.appendChild(faviconImg);
+    tabElement.appendChild(titleSpan);
+    tabElement.appendChild(closeBtn);
     
     tabElement.addEventListener('click', (e) => {
         if (!e.target.closest('.tab-close')) {
@@ -194,7 +316,7 @@ function renderTab(tab) {
         }
     });
     
-    tabElement.querySelector('.tab-close').addEventListener('click', (e) => {
+    closeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeTab(tab.id);
     });
@@ -205,7 +327,7 @@ function renderTab(tab) {
 function switchToTab(tabId) {
     // Deseleziona tutte le tabs
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('webview').forEach(w => w.classList.remove('active'));
+    document.querySelectorAll('webview, iframe').forEach(w => w.classList.remove('active'));
     
     // Attiva tab selezionata
     const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
@@ -217,74 +339,22 @@ function switchToTab(tabId) {
     if (tab) {
         tab.webview.classList.add('active');
         activeTabId = tabId;
-        updateUrlBar(tab.webview.getURL());
+        
+        // Gestione URL per la barra degli indirizzi
+        let currentUrl = '';
+        if (isElectron) {
+            try {
+                currentUrl = tab.webview.getURL();
+            } catch (e) {
+                currentUrl = tab.url;
+            }
+        } else {
+            currentUrl = tab.url; // Gli iframe hanno restrizioni di sicurezza cross-origin
+        }
+        
+        updateUrlBar(currentUrl);
         updateNavigationButtons();
         updateBookmarkButton();
-    }
-}
-
-function closeTab(tabId) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
-    
-    // Rimuovi webview e tab element
-    const tab = tabs[tabIndex];
-    tab.webview.remove();
-    document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
-    
-    // Rimuovi da array
-    tabs.splice(tabIndex, 1);
-    
-    // Se era l'ultima tab, chiudi il browser
-    if (tabs.length === 0) {
-        window.close();
-        return;
-    }
-    
-    // Switch a tab adiacente
-    if (tabId === activeTabId) {
-        const newActiveTab = tabs[Math.min(tabIndex, tabs.length - 1)];
-        switchToTab(newActiveTab.id);
-    }
-}
-
-function updateTabTitle(tabId, title) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab) {
-        tab.title = title || 'Senza titolo';
-        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
-        if (tabElement) {
-            const titleElement = tabElement.querySelector('.tab-title');
-            if (titleElement) {
-                titleElement.textContent = tab.title;
-            }
-        }
-    }
-}
-
-function updateTabFavicon(tabId, favicon) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab) {
-        tab.favicon = favicon;
-        const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
-        if (tabElement) {
-            const faviconElement = tabElement.querySelector('.tab-favicon');
-            if (faviconElement) {
-                faviconElement.src = favicon;
-            }
-        }
-    }
-}
-
-function updateTabLoading(tabId, isLoading) {
-    // Potresti aggiungere un indicatore di caricamento qui
-}
-
-function updateTabInfo(tabId) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab && tab.webview) {
-        updateTabTitle(tabId, tab.webview.getTitle());
-        tab.url = tab.webview.getURL();
     }
 }
 
@@ -294,32 +364,26 @@ function navigateToUrl(input) {
     
     let url = input.trim();
     
-    // Se non è un URL valido, cerca su Google
+    // Se non è un URL valido, usa il motore di ricerca scelto
     if (!url.match(/^https?:\/\//)) {
         if (url.includes('.') && !url.includes(' ')) {
             url = 'https://' + url;
         } else {
-            url = SEARCH_ENGINE + encodeURIComponent(url);
+            url = config.searchEngine + encodeURIComponent(url);
         }
     }
     
-    const webview = getActiveWebview();
-    if (webview) {
-        webview.src = url;
-    }
-}
-
-function updateUrlBar(url) {
-    if (url && !url.startsWith('about:')) {
-        urlBar.value = url;
-    }
-}
-
-function updateNavigationButtons() {
-    const webview = getActiveWebview();
-    if (webview) {
-        backBtn.disabled = !webview.canGoBack();
-        forwardBtn.disabled = !webview.canGoForward();
+    const contentElement = getActiveWebview();
+    if (contentElement) {
+        contentElement.src = url;
+        // Salva l'URL nella tab per Android
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) tab.url = url;
+        
+        if (!isElectron) {
+            updateUrlBar(url);
+            addToHistory(url, "Navigazione Android");
+        }
     }
 }
 
@@ -359,7 +423,15 @@ function updateBookmarkButton() {
     const webview = getActiveWebview();
     if (!webview) return;
     
-    const url = webview.getURL();
+    let url = '';
+    try {
+        url = webview.getURL();
+    } catch (e) {
+        const tab = tabs.find(t => t.id === activeTabId);
+        url = tab ? tab.url : '';
+    }
+    
+    if (!url) return;
     const isBookmarked = bookmarks.some(b => b.url === url);
     
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
@@ -509,6 +581,33 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Gestione Impostazioni
+async function saveSettings() {
+    config.homeUrl = settingHomeUrlPage.value || 'https://www.cosmonet.info/';
+    config.searchEngine = settingSearchEnginePage.value;
+    config.darkMode = settingDarkModePage.checked;
+    
+    await window.electronAPI.saveSettings(config);
+    applySettings();
+    alert('Impostazioni salvate correttamente!');
+    settingsPage.classList.remove('open');
+}
+
+function applySettings() {
+    // Applica Dark Mode
+    if (config.darkMode) {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
+}
+
+function updateSettingsUI() {
+    settingHomeUrlPage.value = config.homeUrl;
+    settingSearchEnginePage.value = config.searchEngine;
+    settingDarkModePage.checked = config.darkMode;
 }
 
 // Avvia applicazione
