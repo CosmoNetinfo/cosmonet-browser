@@ -1,142 +1,104 @@
-# Cosmonet Browser
+# 🌌 Cosmonet Browser
+> La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-Browser personalizzato brandizzato per **cosmonet.info**, sviluppato con Electron.
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Electron](https://img.shields.io/badge/built%20with-Electron-9feaf9.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## 🎨 Caratteristiche
+**Cosmonet Browser** è un browser web moderno, leggero e altamente personalizzabile basato sul motore Chromium (via Electron). Progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info), offre un'esperienza di navigazione fluida con un design futuristico e funzionalità avanzate integrate.
 
-- ✅ **Logo Ufficiale**: Logo reale di Cosmonet integrato (960x960px)
-- ✅ **Multi-tab**: Gestione completa di tab multipli
-- ✅ **Segnalibri**: Sistema di segnalibri persistente
-- ✅ **Cronologia**: Cronologia di navigazione con timestamp
-- ✅ **Multi-piattaforma**: Funziona su Windows, macOS e Linux
-- ✅ **Design personalizzato**: Interfaccia brandizzata per cosmonet.info
-- ✅ **Navigazione completa**: Avanti, indietro, ricarica, home
-- ✅ **Ricerca integrata**: Barra URL con ricerca Google automatica
+---
 
-## 📋 Requisiti
+## ✨ Caratteristiche Principali
 
-- **Node.js** (versione 16 o superiore)
-- **npm** (incluso con Node.js)
+### 🎨 Design & Esperienza Utente
+- **OLED UI Architecture**: Interfaccia pulita, moderna e ottimizzata, con supporto completo alla **Dark Mode** (Neutral Black).
+- **Branding Ufficiale**: Logo Cosmonet ad alta risoluzione e palette colori coerente con l'identità del brand.
+- **Micro-Animazioni**: Transizioni fluide tra tab e attivazioni dei pannelli laterali.
 
-## 🛠️ Installazione
+### ⚙️ Funzionalità Avanzate
+- 📑 **Incredibile Gestione Tab**: Sistema multi-tab dinamico con rendering sicuro e protezione da titoli corrotti.
+- 🌑 **Dark Mode Persistente**: Attivabile con un click, riduce l'affaticamento visivo e viene memorizzata al riavvio.
+- ⚙️ **Pannello Impostazioni**: Personalizza la tua Homepage, scegli il tuo motore di ricerca predefinito (Google, Bing, DuckDuckGo) e gestisci il tema.
+- 📑 **Segnalibri & Cronologia**: Gestione completa e persistente su disco per non perdere mai le tue pagine preferite.
+- 🛠️ **Dev Tools integrati**: Scorciatoia `F12` per il debug istantaneo delle pagine web caricate.
 
-1. **Scarica Node.js** da [nodejs.org](https://nodejs.org/) se non lo hai già installato
+### 📱 Cross-Platform
+- **Desktop**: Versioni native per Windows (Installer NSIS), macOS e Linux.
+- **Mobile**: Predisposto per **Android** tramite integrazione con Capacitor.
 
-2. **Installa le dipendenze**:
-   ```bash
-   cd cosmonet-browser
-   npm install
-   ```
+---
 
-## ▶️ Avvio
+## 🚀 Guida Rapida
 
-Per avviare il browser in modalità sviluppo:
+### Requisiti
+- **Node.js** v18 o superiore
+- **npm** v9 o superiore
 
+### Installazione
+```bash
+# Clona il repository
+git clone https://github.com/CosmoNetinfo/cosmonet-browser.git
+
+# Entra nella cartella
+cd cosmonet-browser
+
+# Installa le dipendenze
+npm install
+```
+
+### Sviluppo
+Per avviare il browser in modalità live:
 ```bash
 npm start
 ```
 
-## 📦 Build per Distribuzione
+---
 
-Per creare un file eseguibile distribuibile:
+## 📦 Distribuzione (Build)
 
-### Windows
+### 🖥️ Desktop (Windows/Mac/Linux)
+Per generare l'installer definitivo per la tua piattaforma:
 ```bash
 npm run build
 ```
-Genererà un installer in `dist/Cosmonet Browser Setup.exe`
+L'installer verrà generato nella cartella `dist/`. Per Windows, troverai il file `Cosmonet Browser Setup 1.0.0.exe`.
 
-### macOS
-```bash
-npm run build
-```
-Genererà un file DMG in `dist/Cosmonet Browser.dmg`
-
-### Linux
-```bash
-npm run build
-```
-Genererà un file AppImage e DEB in `dist/`
-
-## 🎨 Personalizzazione
-
-### Modificare il colore del tema
-
-Modifica il file `styles.css`, cerca questa sezione:
-
-```css
-.header {
-    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-    /* Cambia questi colori per personalizzare */
-}
-```
-
-### Modificare la homepage
-
-Modifica il file `renderer.js`, cerca:
-
-```javascript
-const HOME_URL = 'https://www.cosmonet.info/';
-```
-
-### Modificare il logo
-
-Sostituisci l'SVG nella sezione `.logo` del file `index.html`
-
-## 🔧 Struttura del Progetto
-
-```
-cosmonet-browser/
-├── main.js           # Processo principale Electron
-├── preload.js        # Script preload per context bridge
-├── index.html        # Interfaccia principale
-├── renderer.js       # Logica frontend
-├── styles.css        # Stili CSS
-├── package.json      # Configurazione npm
-└── README.md         # Questa documentazione
-```
-
-## 💾 Dati Persistenti
-
-Il browser salva automaticamente:
-- **Segnalibri** in `%AppData%/cosmonet-browser/bookmarks.json` (Windows)
-- **Cronologia** in `%AppData%/cosmonet-browser/history.json` (Windows)
-
-Su macOS/Linux i file sono in `~/.config/cosmonet-browser/`
-
-## ⌨️ Scorciatoie da Tastiera
-
-- `Ctrl+T` / `Cmd+T` - Nuova tab
-- `Ctrl+W` / `Cmd+W` - Chiudi tab
-- `Ctrl+R` / `Cmd+R` - Ricarica pagina
-- `Ctrl++` / `Cmd++` - Zoom in
-- `Ctrl+-` / `Cmd+-` - Zoom out
-- `Ctrl+0` / `Cmd+0` - Reset zoom
-- `F12` - Console sviluppatore
-
-## 🐛 Troubleshooting
-
-### Il browser non si avvia
-- Verifica di aver installato tutte le dipendenze con `npm install`
-- Controlla la versione di Node.js con `node --version` (deve essere >= 16)
-
-### Le webview non caricano le pagine
-- Electron potrebbe avere restrizioni di sicurezza. Controlla la console con F12
-
-### I segnalibri non si salvano
-- Verifica i permessi della cartella userData
-- Controlla la console per errori di filesystem
-
-## 📝 Licenza
-
-MIT License - Libero per uso personale e commerciale
-
-## 🌐 Credits
-
-Sviluppato per **cosmonet.info**
-
-Basato su [Electron](https://www.electronjs.org/)
+### 📱 Android
+Il progetto è già configurato con **Capacitor**. Per generare l'APK:
+1. Sincronizza i file web: `npx cap sync android`
+2. Apri il progetto in Android Studio: `npx cap open android`
+3. Genera il Signed APK da Android Studio.
 
 ---
 
-Per supporto o domande, visita [www.cosmonet.info](https://www.cosmonet.info/)
+## 🔧 Architettura Tecnica
+
+- **Engine**: Chromium (via Electron 28+)
+- **Logic**: Vanilla JavaScript (ES6+), Node.js per il salvataggio dati.
+- **Styling**: Modern CSS3 con Flexbox e CSS Variables per il sistema di temi.
+- **Mobile bridge**: Ionic Capacitor.
+
+---
+
+## 💾 Gestione Dati
+I tuoi dati sono salvati localmente nella directory utente del sistema operativo:
+- **Windows**: `%AppData%/cosmonet-browser/`
+- **macOS**: `~/Library/Application Support/cosmonet-browser/`
+- **Linux**: `~/.config/cosmonet-browser/`
+
+File creati: `bookmarks.json`, `history.json`, `settings.json`.
+
+---
+
+## 📜 Licenza
+Questo progetto è rilasciato sotto la licenza **MIT**. Sei libero di usarlo, modificarlo e distribuirlo.
+
+---
+
+## 🌐 Link Utili
+- **Sito Ufficiale**: [www.cosmonet.info](https://www.cosmonet.info)
+- **Supporto**: [Visita il Forum](https://www.cosmonet.info/forum)
+
+---
+*Sviluppato con ❤️ per la Galassia Digitale di Cosmonet.*
