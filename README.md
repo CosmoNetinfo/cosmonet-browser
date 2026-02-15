@@ -98,7 +98,7 @@ Questo progetto è rilasciato sotto la licenza **MIT**. Sei libero di usarlo, mo
 
 ## 🌐 Link Utili
 - **Sito Ufficiale**: [www.cosmonet.info](https://www.cosmonet.info)
-- **Supporto**: [Visita il Forum]([https://www.cosmonet.info/forum](https://www.cosmonet.info/community/pc/cosmonet-browser/))
+- **Supporto**: [Visita il Forum]([https://www.cosmonet.info/forum](https://www.cosmonet.info/community/pc/cosmonet-browser/)
 
 ---
 *Sviluppato con ❤️ per la Galassia Digitale di Cosmonet.*
