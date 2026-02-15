@@ -20,22 +20,24 @@ const reloadBtn = document.getElementById('reload-btn');
 const homeBtn = document.getElementById('home-btn');
 const bookmarkBtn = document.getElementById('bookmark-btn');
 const newTabBtn = document.getElementById('new-tab-btn');
-const settingsBtn = document.getElementById('settings-btn');
+const menuBtn = document.getElementById('menu-btn');
+const mainMenu = document.getElementById('main-menu');
 const bookmarksBtn = document.getElementById('bookmarks-btn');
 const historyBtn = document.getElementById('history-btn');
 const tabsBar = document.getElementById('tabs-bar');
 const webviewsContainer = document.getElementById('webviews-container');
 const bookmarksPanel = document.getElementById('bookmarks-panel');
 const historyPanel = document.getElementById('history-panel');
-const settingsPanel = document.getElementById('settings-panel');
+const settingsPage = document.getElementById('settings-page');
 const bookmarksList = document.getElementById('bookmarks-list');
 const historyList = document.getElementById('history-list');
 
-// Elementi Impostazioni
-const settingHomeUrl = document.getElementById('setting-home-url');
-const settingSearchEngine = document.getElementById('setting-search-engine');
-const settingDarkMode = document.getElementById('setting-dark-mode');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
+// Elementi Impostazioni (Nuova Pagina)
+const settingHomeUrlPage = document.getElementById('setting-home-url-page');
+const settingSearchEnginePage = document.getElementById('setting-search-engine-page');
+const settingDarkModePage = document.getElementById('setting-dark-mode-page');
+const saveAllSettingsBtn = document.getElementById('save-all-settings-btn');
+const closeSettingsPageBtn = document.getElementById('close-settings-page-btn');
 
 // Inizializzazione
 async function init() {
@@ -84,19 +86,79 @@ function setupEventListeners() {
     reloadBtn.addEventListener('click', () => getActiveWebview()?.reload());
     homeBtn.addEventListener('click', () => navigateToUrl(config.homeUrl));
     
-    // Segnalibri, cronologia e impostazioni
+    // Segnalibri e cronologia (Accesso rapido)
     bookmarkBtn.addEventListener('click', toggleBookmark);
     bookmarksBtn.addEventListener('click', () => togglePanel(bookmarksPanel));
     historyBtn.addEventListener('click', () => togglePanel(historyPanel));
-    settingsBtn.addEventListener('click', () => togglePanel(settingsPanel));
     
-    // Salvataggio impostazioni
-    saveSettingsBtn.addEventListener('click', saveSettings);
+    // Menu a comparsa
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mainMenu.classList.toggle('visible');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!mainMenu.contains(e.target) && e.target !== menuBtn) {
+            mainMenu.classList.remove('visible');
+        }
+    });
+
+    // Azioni Menu
+    document.getElementById('menu-new-tab').addEventListener('click', () => {
+        createTab(config.homeUrl);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-new-window').addEventListener('click', () => {
+        // Opzionale: implementare nuova finestra reale se necessario
+        createTab(config.homeUrl);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-history').addEventListener('click', () => {
+        togglePanel(historyPanel);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-bookmarks').addEventListener('click', () => {
+        togglePanel(bookmarksPanel);
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-settings').addEventListener('click', () => {
+        settingsPage.classList.add('open');
+        mainMenu.classList.remove('visible');
+    });
+
+    document.getElementById('menu-exit').addEventListener('click', () => {
+        window.close();
+    });
+
+    // Gestione Pagina Impostazioni
+    closeSettingsPageBtn.addEventListener('click', () => {
+        settingsPage.classList.remove('open');
+    });
+
+    saveAllSettingsBtn.addEventListener('click', saveSettings);
+
+    document.querySelectorAll('.settings-sidebar-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionId = item.dataset.section;
+            
+            // Update active sidebar item
+            document.querySelectorAll('.settings-sidebar-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // Update visible section
+            document.querySelectorAll('.settings-section-container').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${sectionId}`).classList.add('active');
+        });
+    });
     
     // Nuova tab
     newTabBtn.addEventListener('click', () => createTab(config.homeUrl));
     
-    // Chiusura pannelli
+    // Chiusura pannelli laterali
     document.querySelectorAll('.close-panel-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.target.closest('.side-panel').classList.remove('open');
@@ -106,8 +168,8 @@ function setupEventListeners() {
     // Cancella cronologia
     document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
     
-    // IPC da menu
-    window.electronAPI.onNewTab(() => createTab(HOME_URL));
+    // IPC da menu di sistema
+    window.electronAPI.onNewTab(() => createTab(config.homeUrl));
     window.electronAPI.onCloseTab(() => closeTab(activeTabId));
     window.electronAPI.onReloadTab(() => getActiveWebview()?.reload());
     window.electronAPI.onNavigateTo((url) => navigateToUrl(url));
@@ -576,14 +638,14 @@ function escapeHtml(text) {
 
 // Gestione Impostazioni
 async function saveSettings() {
-    config.homeUrl = settingHomeUrl.value || 'https://www.cosmonet.info/';
-    config.searchEngine = settingSearchEngine.value;
-    config.darkMode = settingDarkMode.checked;
+    config.homeUrl = settingHomeUrlPage.value || 'https://www.cosmonet.info/';
+    config.searchEngine = settingSearchEnginePage.value;
+    config.darkMode = settingDarkModePage.checked;
     
     await window.electronAPI.saveSettings(config);
     applySettings();
     alert('Impostazioni salvate correttamente!');
-    settingsPanel.classList.remove('open');
+    settingsPage.classList.remove('open');
 }
 
 function applySettings() {
@@ -596,9 +658,9 @@ function applySettings() {
 }
 
 function updateSettingsUI() {
-    settingHomeUrl.value = config.homeUrl;
-    settingSearchEngine.value = config.searchEngine;
-    settingDarkMode.checked = config.darkMode;
+    settingHomeUrlPage.value = config.homeUrl;
+    settingSearchEnginePage.value = config.searchEngine;
+    settingDarkModePage.checked = config.darkMode;
 }
 
 // Avvia applicazione

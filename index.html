@@ -138,21 +138,44 @@
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-        <button id="settings-btn" class="toolbar-btn" title="Impostazioni">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-            />
+        <button id="menu-btn" class="toolbar-btn" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="19" r="1.5" />
           </svg>
         </button>
+
+        <!-- Menu a discesa stile Chrome -->
+        <div id="main-menu" class="dropdown-menu">
+          <div class="menu-item" id="menu-new-tab">
+            <span>Nuova scheda</span>
+            <span class="shortcut">Ctrl+T</span>
+          </div>
+          <div class="menu-item" id="menu-new-window">
+             <span>Nuova finestra</span>
+             <span class="shortcut">Ctrl+N</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" id="menu-history">
+            <span>Cronologia</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="menu-item" id="menu-downloads">
+            <span>Download</span>
+            <span class="shortcut">Ctrl+J</span>
+          </div>
+          <div class="menu-item" id="menu-bookmarks">
+            <span>Preferiti</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" id="menu-settings">
+            <span>Impostazioni</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" id="menu-exit">
+            <span>Esci</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -180,41 +203,110 @@
       <div id="history-list" class="panel-content"></div>
     </div>
 
-    <!-- Pannello Impostazioni -->
-    <div id="settings-panel" class="side-panel">
-      <div class="panel-header">
-        <h3>Impostazioni</h3>
-        <button class="close-panel-btn">×</button>
+    <!-- Pagina Impostazioni (Stile CosmoNet Full Screen) -->
+    <div id="settings-page" class="settings-page">
+      <div class="settings-navbar">
+        <button id="close-settings-page-btn" class="back-btn-settings" title="Torna alla navigazione">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </button>
+        <span class="settings-brand">Cosmonet Browser</span>
+        <h2>Impostazioni</h2>
       </div>
-      <div class="panel-content">
-        <div class="settings-group">
-          <label>Pagina Iniziale (Homepage)</label>
-          <input type="text" id="setting-home-url" placeholder="https://..." />
-        </div>
+      
+      <div class="settings-body">
+        <aside class="settings-sidebar">
+          <div class="settings-sidebar-item active" data-section="appearance" title="Personalizza l'aspetto">Aspetto</div>
+          <div class="settings-sidebar-item" data-section="search" title="Configura il motore di ricerca">Motore di ricerca</div>
+          <div class="settings-sidebar-item" data-section="startup" title="Configura la pagina iniziale">All'avvio</div>
+          <div class="settings-sidebar-item" data-section="downloads" title="Gestione download">Download</div>
+          <div class="settings-sidebar-item" data-section="about" title="Info sul browser">Informazioni</div>
+        </aside>
 
-        <div class="settings-group">
-          <label>Motore di Ricerca</label>
-          <select id="setting-search-engine" title="Motore di ricerca predefinito">
-            <option value="https://www.google.com/search?q=">Google</option>
-            <option value="https://www.bing.com/search?q=">Bing</option>
-            <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
-          </select>
-        </div>
+        <main class="settings-main-content">
+          <!-- Sezione Aspetto -->
+          <section id="section-appearance" class="settings-section-container active">
+            <div class="settings-card">
+              <h3>Aspetto</h3>
+              <div class="settings-option">
+                <div class="option-text">
+                  <h4>Tema scuro (OLED Black)</h4>
+                  <p>Migliore contrasto per sessioni notturne.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="setting-dark-mode-page" title="Attiva/Disattiva Dark Mode">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+          </section>
 
-        <div class="settings-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="setting-dark-mode" />
-            Modalità Scura (Interfaccia)
-          </label>
-        </div>
+          <!-- Sezione Motore di Ricerca -->
+          <section id="section-search" class="settings-section-container">
+            <div class="settings-card">
+              <h3>Motore di ricerca</h3>
+              <div class="settings-option">
+                <div class="option-text">
+                  <h4>Motore di ricerca predefinito</h4>
+                  <p>Scegli il servizio per le ricerche nella barra degli URL.</p>
+                </div>
+                <select id="setting-search-engine-page" class="cosmo-select" title="Seleziona motore di ricerca">
+                  <option value="https://www.google.com/search?q=">Google</option>
+                  <option value="https://www.bing.com/search?q=">Bing</option>
+                  <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
-        <div class="settings-divider"></div>
+          <!-- Sezione All'avvio -->
+          <section id="section-startup" class="settings-section-container">
+            <div class="settings-card">
+              <h3>All'avvio</h3>
+              <div class="settings-option">
+                <div class="option-text">
+                  <h4>Indirizzo Homepage</h4>
+                  <p>Sito caricato all'apertura di una nuova scheda.</p>
+                </div>
+                <input type="text" id="setting-home-url-page" class="cosmo-input" placeholder="https://..." title="Indirizzo Homepage">
+              </div>
+            </div>
+          </section>
 
-        <div class="settings-group">
-          <button id="save-settings-btn" class="save-btn">
-            Salva Impostazioni
-          </button>
-        </div>
+          <!-- Sezione Download -->
+          <section id="section-downloads" class="settings-section-container">
+            <div class="settings-card">
+              <h3>Download</h3>
+              <div class="settings-option">
+                <div class="option-text">
+                  <h4>Gestione download assistita</h4>
+                  <p>Chiede conferma per ogni file in scaricamento.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" checked disabled title="Download assistito (Sempre attivo)">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <!-- Sezione Info -->
+          <section id="section-about" class="settings-section-container">
+             <div class="settings-card about-card">
+                <img src="assets/logo.png" width="100" height="100" alt="Cosmonet Logo">
+                <h3>Cosmonet Browser</h3>
+                <p>Versione 1.1.0 Stable Build</p>
+                <div class="about-links">
+                  <a href="https://www.cosmonet.info" target="_blank" rel="noopener">Cosmonet.info</a>
+                  <a href="#">Verifica aggiornamenti</a>
+                </div>
+             </div>
+          </section>
+        </main>
+      </div>
+      <div class="settings-footer">
+         <button id="save-all-settings-btn" class="save-btn settings-footer-btn" title="Salva tutte le modifiche">Salva Tutto</button>
       </div>
     </div>
 
