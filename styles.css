@@ -856,4 +856,96 @@ body.dark-mode .settings-footer {
   }
 }
 
+/* Startup URLs List Styles */
+.settings-option-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.startup-urls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.startup-url-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.startup-url-input {
+  flex: 1;
+}
+
+.remove-url-btn {
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-url-btn:hover {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.cosmo-btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.cosmo-btn-secondary:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.cosmo-btn-secondary svg {
+  color: #2563eb;
+}
+
+body.dark-mode .cosmo-btn-secondary {
+  background: #374151;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+body.dark-mode .cosmo-btn-secondary:hover {
+  background: #4b5563;
+}
+
+body.dark-mode .remove-url-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+body.dark-mode .remove-url-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+
 

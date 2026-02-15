@@ -264,12 +264,20 @@
           <section id="section-startup" class="settings-section-container">
             <div class="settings-card">
               <h3>All'avvio</h3>
-              <div class="settings-option">
+              <div class="settings-option-vertical">
                 <div class="option-text">
-                  <h4>Indirizzo Homepage</h4>
-                  <p>Sito caricato all'apertura di una nuova scheda.</p>
+                  <h4>Pagine all'avvio</h4>
+                  <p>Scegli quali siti aprire automaticamente all'avvio del browser.</p>
                 </div>
-                <input type="text" id="setting-home-url-page" class="cosmo-input" placeholder="https://..." title="Indirizzo Homepage">
+                <div id="startup-urls-list" class="startup-urls-list">
+                  <!-- Caricato dinamicamente -->
+                </div>
+                <button id="add-startup-url-btn" class="cosmo-btn-secondary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Aggiungi nuova pagina
+                </button>
               </div>
             </div>
           </section>

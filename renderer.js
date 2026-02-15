@@ -31,7 +31,7 @@ if (!isElectron) {
 
 // Configurazione di default
 let config = {
-    homeUrl: 'https://www.cosmonet.info/',
+    startupUrls: ['https://www.cosmonet.info/'],
     searchEngine: 'https://www.google.com/search?q=',
     darkMode: false
 };
@@ -86,8 +86,12 @@ async function init() {
     // Event listeners
     setupEventListeners();
     
-    // Crea prima tab
-    createTab(config.homeUrl);
+    // Crea pagine all'avvio
+    if (config.startupUrls && config.startupUrls.length > 0) {
+        config.startupUrls.forEach(url => createTab(url));
+    } else {
+        createTab('https://www.cosmonet.info/');
+    }
     
     // Aggiorna UI
     renderBookmarks();
@@ -114,7 +118,10 @@ function setupEventListeners() {
     backBtn.addEventListener('click', () => getActiveWebview()?.goBack());
     forwardBtn.addEventListener('click', () => getActiveWebview()?.goForward());
     reloadBtn.addEventListener('click', () => getActiveWebview()?.reload());
-    homeBtn.addEventListener('click', () => navigateToUrl(config.homeUrl));
+    homeBtn.addEventListener('click', () => {
+        const homeUrl = config.startupUrls && config.startupUrls.length > 0 ? config.startupUrls[0] : 'https://www.cosmonet.info/';
+        navigateToUrl(homeUrl);
+    });
     
     // Segnalibri e cronologia (Accesso rapido)
     bookmarkBtn.addEventListener('click', toggleBookmark);
@@ -186,7 +193,7 @@ function setupEventListeners() {
     });
     
     // Nuova tab
-    newTabBtn.addEventListener('click', () => createTab(config.homeUrl));
+    newTabBtn.addEventListener('click', () => createTab('https://www.google.com'));
     
     // Chiusura pannelli laterali
     document.querySelectorAll('.close-panel-btn').forEach(btn => {
@@ -198,15 +205,29 @@ function setupEventListeners() {
     // Cancella cronologia
     document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
     
+    // Gestione Pagine all'avvio
+    document.getElementById('add-startup-url-btn').addEventListener('click', () => {
+        config.startupUrls.push('https://');
+        renderStartupUrlsList();
+    });
+    
     // IPC da menu di sistema
-    window.electronAPI.onNewTab(() => createTab(config.homeUrl));
+    window.electronAPI.onNewTab(() => createTab('https://www.google.com'));
     window.electronAPI.onCloseTab(() => closeTab(activeTabId));
     window.electronAPI.onReloadTab(() => getActiveWebview()?.reload());
     window.electronAPI.onNavigateTo((url) => navigateToUrl(url));
+
+    // Ricevitore per Android Nativo (WebViewClient)
+    window.updateAndroidUrl = (url) => {
+        const decodedUrl = decodeURI(url);
+        updateUrlBar(decodedUrl);
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) tab.url = decodedUrl;
+    };
 }
 
 // Gestione tabs
-function createTab(url = config.homeUrl) {
+function createTab(url = 'https://www.google.com') {
     const tabId = Date.now().toString();
     
     // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web)
@@ -220,6 +241,8 @@ function createTab(url = config.homeUrl) {
         webview.style.border = 'none';
         webview.style.width = '100%';
         webview.style.height = '100%';
+        webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+        webview.setAttribute('allow', 'camera; microphone; geolocation');
     }
     
     webview.id = `webview-${tabId}`;
@@ -242,7 +265,19 @@ function createTab(url = config.homeUrl) {
         // Fallback per iframe (Android)
         webview.addEventListener('load', () => {
             updateTabLoading(tabId, false);
-            updateTabTitle(tabId, "Pagina caricata"); // Limitazione iframe: non possiamo leggere il titolo cross-origin
+            try {
+                // Prova a leggere l'URL reale (funziona se stesso dominio)
+                const currentUrl = webview.contentWindow.location.href;
+                if (currentUrl && currentUrl !== 'about:blank') {
+                    updateUrlBar(currentUrl);
+                    const tab = tabs.find(t => t.id === tabId);
+                    if (tab) tab.url = currentUrl;
+                }
+            } catch (e) {
+                // Cross-origin: la barra rimane all'ultimo URL impostato manualmente
+                console.log("Navigazione esterna (Google/etc): URL protetto");
+            }
+            updateTabTitle(tabId, "Pagina caricata"); 
         });
     }
 
@@ -701,7 +736,10 @@ function escapeHtml(text) {
 
 // Gestione Impostazioni
 async function saveSettings() {
-    config.homeUrl = settingHomeUrlPage.value || 'https://www.cosmonet.info/';
+    // Raccoglie startup URLs
+    const urlInputs = document.querySelectorAll('.startup-url-input');
+    config.startupUrls = Array.from(urlInputs).map(input => input.value).filter(url => url.trim() !== '');
+    
     config.searchEngine = settingSearchEnginePage.value;
     config.darkMode = settingDarkModePage.checked;
     
@@ -709,6 +747,35 @@ async function saveSettings() {
     applySettings();
     alert('Impostazioni salvate correttamente!');
     settingsPage.classList.remove('open');
+}
+
+function renderStartupUrlsList() {
+    const listContainer = document.getElementById('startup-urls-list');
+    listContainer.innerHTML = '';
+    
+    config.startupUrls.forEach((url, index) => {
+        const item = document.createElement('div');
+        item.className = 'startup-url-item';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'cosmo-input startup-url-input';
+        input.value = url;
+        input.placeholder = 'https://...';
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-url-btn';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.title = 'Rimuovi questa pagina';
+        removeBtn.onclick = () => {
+            config.startupUrls.splice(index, 1);
+            renderStartupUrlsList();
+        };
+        
+        item.appendChild(input);
+        item.appendChild(removeBtn);
+        listContainer.appendChild(item);
+    });
 }
 
 function applySettings() {
@@ -721,7 +788,7 @@ function applySettings() {
 }
 
 function updateSettingsUI() {
-    settingHomeUrlPage.value = config.homeUrl;
+    renderStartupUrlsList();
     settingSearchEnginePage.value = config.searchEngine;
     settingDarkModePage.checked = config.darkMode;
 }
