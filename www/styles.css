@@ -48,106 +48,6 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: white; /* Spostato da inline */
-  padding: 2px;      /* Spostato da inline */
-  border-radius: 6px; /* Spostato da inline */
-}
-
-/* Settings Styles */
-.settings-group {
-  margin-bottom: 20px;
-}
-
-.settings-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.settings-group input[type="text"],
-.settings-group select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.settings-group input[type="text"]:focus,
-.settings-group select:focus {
-  border-color: #2563eb;
-}
-
-.checkbox-label {
-  display: flex !important;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.settings-divider {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 20px 0;
-}
-
-.save-btn {
-  width: 100%;
-  padding: 12px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.save-btn:hover {
-  background: #1d4ed8;
-}
-
-/* Dark Mode Preview */
-body.dark-mode {
-  background: #111827;
-}
-
-body.dark-mode .tabs-container {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-body.dark-mode .tab {
-  background: #374151;
-  color: #9ca3af;
-}
-
-body.dark-mode .tab.active {
-  background: #111827;
-  color: white;
-}
-
-body.dark-mode .side-panel {
-  background: #1f2937;
-  color: white;
-}
-
-body.dark-mode .settings-group label {
-  color: #e5e7eb;
-}
-
-body.dark-mode .bookmark-item, 
-body.dark-mode .history-item {
-  background: #374151;
-}
-
-body.dark-mode .bookmark-title, 
-body.dark-mode .history-title {
-  color: white;
 }
 
 .brand-name {
@@ -311,22 +211,19 @@ body.dark-mode .history-title {
 /* Webviews */
 .webviews-container {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   position: relative;
   background: white;
 }
 
 webview {
-  flex: 1;
+  position: absolute;
   width: 100%;
   height: 100%;
   display: none;
-  border: none;
 }
 
 webview.active {
-  display: flex;
+  display: block;
 }
 
 /* Side Panels */

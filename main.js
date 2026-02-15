@@ -6,6 +6,7 @@ let mainWindow;
 const userDataPath = app.getPath('userData');
 const bookmarksFile = path.join(userDataPath, 'bookmarks.json');
 const historyFile = path.join(userDataPath, 'history.json');
+const settingsFile = path.join(userDataPath, 'settings.json');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -111,6 +112,29 @@ ipcMain.handle('save-bookmarks', async (event, bookmarks) => {
     return true;
   } catch (err) {
     console.error('Errore salvataggio segnalibri:', err);
+    return false;
+  }
+});
+
+// Gestione impostazioni
+ipcMain.handle('load-settings', async () => {
+  try {
+    if (fs.existsSync(settingsFile)) {
+      const data = fs.readFileSync(settingsFile, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Errore caricamento impostazioni:', err);
+  }
+  return null;
+});
+
+ipcMain.handle('save-settings', async (event, settings) => {
+  try {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Errore salvataggio impostazioni:', err);
     return false;
   }
 });

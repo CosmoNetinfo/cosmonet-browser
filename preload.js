@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveBookmarks: (bookmarks) => ipcRenderer.invoke('save-bookmarks', bookmarks),
   loadHistory: () => ipcRenderer.invoke('load-history'),
   saveHistory: (history) => ipcRenderer.invoke('save-history', history),
+  loadSettings: () => ipcRenderer.invoke('load-settings'),
+  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
   onNewTab: (callback) => ipcRenderer.on('new-tab', callback),
   onCloseTab: (callback) => ipcRenderer.on('close-tab', callback),
   onReloadTab: (callback) => ipcRenderer.on('reload-tab', callback),

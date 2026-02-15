@@ -1,9 +1,6 @@
-// Configurazione di default
-let config = {
-    homeUrl: 'https://www.cosmonet.info/',
-    searchEngine: 'https://www.google.com/search?q=',
-    darkMode: false
-};
+// Configurazione
+const HOME_URL = 'https://www.cosmonet.info/';
+const SEARCH_ENGINE = 'https://www.google.com/search?q=';
 
 // Stato del browser
 let tabs = [];
@@ -19,47 +16,30 @@ const reloadBtn = document.getElementById('reload-btn');
 const homeBtn = document.getElementById('home-btn');
 const bookmarkBtn = document.getElementById('bookmark-btn');
 const newTabBtn = document.getElementById('new-tab-btn');
-const settingsBtn = document.getElementById('settings-btn');
 const bookmarksBtn = document.getElementById('bookmarks-btn');
 const historyBtn = document.getElementById('history-btn');
 const tabsBar = document.getElementById('tabs-bar');
 const webviewsContainer = document.getElementById('webviews-container');
 const bookmarksPanel = document.getElementById('bookmarks-panel');
 const historyPanel = document.getElementById('history-panel');
-const settingsPanel = document.getElementById('settings-panel');
 const bookmarksList = document.getElementById('bookmarks-list');
 const historyList = document.getElementById('history-list');
 
-// Elementi Impostazioni
-const settingHomeUrl = document.getElementById('setting-home-url');
-const settingSearchEngine = document.getElementById('setting-search-engine');
-const settingDarkMode = document.getElementById('setting-dark-mode');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
-
 // Inizializzazione
 async function init() {
-    // Carica impostazioni, segnalibri e cronologia
-    const savedSettings = await window.electronAPI.loadSettings();
-    if (savedSettings) {
-        config = { ...config, ...savedSettings };
-    }
-    
+    // Carica segnalibri e cronologia
     bookmarks = await window.electronAPI.loadBookmarks();
     history = await window.electronAPI.loadHistory();
-    
-    // Applica impostazioni iniziali
-    applySettings();
     
     // Event listeners
     setupEventListeners();
     
-    // Crea prima tab
-    createTab(config.homeUrl);
+    // Crea prima tab (dopo gli indicatori)
+    createTab(HOME_URL);
     
     // Aggiorna UI
     renderBookmarks();
     renderHistory();
-    updateSettingsUI();
 }
 
 function setupEventListeners() {
@@ -81,19 +61,15 @@ function setupEventListeners() {
     backBtn.addEventListener('click', () => getActiveWebview()?.goBack());
     forwardBtn.addEventListener('click', () => getActiveWebview()?.goForward());
     reloadBtn.addEventListener('click', () => getActiveWebview()?.reload());
-    homeBtn.addEventListener('click', () => navigateToUrl(config.homeUrl));
+    homeBtn.addEventListener('click', () => navigateToUrl(HOME_URL));
     
-    // Segnalibri, cronologia e impostazioni
+    // Segnalibri e cronologia
     bookmarkBtn.addEventListener('click', toggleBookmark);
     bookmarksBtn.addEventListener('click', () => togglePanel(bookmarksPanel));
     historyBtn.addEventListener('click', () => togglePanel(historyPanel));
-    settingsBtn.addEventListener('click', () => togglePanel(settingsPanel));
-    
-    // Salvataggio impostazioni
-    saveSettingsBtn.addEventListener('click', saveSettings);
     
     // Nuova tab
-    newTabBtn.addEventListener('click', () => createTab(config.homeUrl));
+    newTabBtn.addEventListener('click', () => createTab(HOME_URL));
     
     // Chiusura pannelli
     document.querySelectorAll('.close-panel-btn').forEach(btn => {
@@ -201,22 +177,16 @@ function renderTab(tab) {
     tabElement.className = 'tab';
     tabElement.dataset.tabId = tab.id;
     
-    // Icona di default se non presente
-    const defaultFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
-    
     tabElement.innerHTML = `
-        <img class="tab-favicon" src="${tab.favicon || defaultFavicon}" onerror="this.src='${defaultFavicon}'" />
-        <span class="tab-title"></span>
+        <img class="tab-favicon" src="${tab.favicon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'}" />
+        <span class="tab-title">${escapeHtml(tab.title)}</span>
         <button class="tab-close">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
         </button>
     `;
-    
-    // Impostiamo il titolo in modo sicuro tramite textContent
-    tabElement.querySelector('.tab-title').textContent = tab.title || 'Nuova Tab';
     
     tabElement.addEventListener('click', (e) => {
         if (!e.target.closest('.tab-close')) {
@@ -247,16 +217,7 @@ function switchToTab(tabId) {
     if (tab) {
         tab.webview.classList.add('active');
         activeTabId = tabId;
-        
-        // Gestione errore se la webview non è ancora pronta
-        let currentUrl = '';
-        try {
-            currentUrl = tab.webview.getURL();
-        } catch (e) {
-            currentUrl = tab.url; // Usa l'URL salvato se getURL() fallisce
-        }
-        
-        updateUrlBar(currentUrl);
+        updateUrlBar(tab.webview.getURL());
         updateNavigationButtons();
         updateBookmarkButton();
     }
@@ -333,12 +294,12 @@ function navigateToUrl(input) {
     
     let url = input.trim();
     
-    // Se non è un URL valido, usa il motore di ricerca scelto
+    // Se non è un URL valido, cerca su Google
     if (!url.match(/^https?:\/\//)) {
         if (url.includes('.') && !url.includes(' ')) {
             url = 'https://' + url;
         } else {
-            url = config.searchEngine + encodeURIComponent(url);
+            url = SEARCH_ENGINE + encodeURIComponent(url);
         }
     }
     
@@ -357,13 +318,8 @@ function updateUrlBar(url) {
 function updateNavigationButtons() {
     const webview = getActiveWebview();
     if (webview) {
-        try {
-            backBtn.disabled = !webview.canGoBack();
-            forwardBtn.disabled = !webview.canGoForward();
-        } catch (e) {
-            backBtn.disabled = true;
-            forwardBtn.disabled = true;
-        }
+        backBtn.disabled = !webview.canGoBack();
+        forwardBtn.disabled = !webview.canGoForward();
     }
 }
 
@@ -403,15 +359,7 @@ function updateBookmarkButton() {
     const webview = getActiveWebview();
     if (!webview) return;
     
-    let url = '';
-    try {
-        url = webview.getURL();
-    } catch (e) {
-        const tab = tabs.find(t => t.id === activeTabId);
-        url = tab ? tab.url : '';
-    }
-    
-    if (!url) return;
+    const url = webview.getURL();
     const isBookmarked = bookmarks.some(b => b.url === url);
     
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
@@ -561,33 +509,6 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-// Gestione Impostazioni
-async function saveSettings() {
-    config.homeUrl = settingHomeUrl.value || 'https://www.cosmonet.info/';
-    config.searchEngine = settingSearchEngine.value;
-    config.darkMode = settingDarkMode.checked;
-    
-    await window.electronAPI.saveSettings(config);
-    applySettings();
-    alert('Impostazioni salvate correttamente!');
-    settingsPanel.classList.remove('open');
-}
-
-function applySettings() {
-    // Applica Dark Mode
-    if (config.darkMode) {
-        document.body.classList.add('dark-mode');
-    } else {
-        document.body.classList.remove('dark-mode');
-    }
-}
-
-function updateSettingsUI() {
-    settingHomeUrl.value = config.homeUrl;
-    settingSearchEngine.value = config.searchEngine;
-    settingDarkMode.checked = config.darkMode;
 }
 
 // Avvia applicazione
