@@ -9,6 +9,14 @@
 
 ---
 
+## 📥 Download Rapido
+| Piattaforma | File | Link |
+| :--- | :--- | :--- |
+| **🪟 Windows** | `Cosmonet-Browser-Setup.exe` | [Scarica APK/EXE qui](https://github.com/CosmoNetinfo/cosmonet-browser/releases/latest) |
+| **📱 Android** | `Cosmonet-Browser-v1.apk` | [Scarica APK/EXE qui](https://github.com/CosmoNetinfo/cosmonet-browser/releases/latest) |
+
+---
+
 ## ✨ Caratteristiche Principali
 
 ### 🎨 Design & Esperienza Utente
