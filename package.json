@@ -7,6 +7,7 @@
     "start": "electron .",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "tauri": "tauri",
     "build": "electron-builder"
   },
   "keywords": [
