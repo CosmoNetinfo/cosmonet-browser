@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -7,6 +7,7 @@ const userDataPath = app.getPath('userData');
 const bookmarksFile = path.join(userDataPath, 'bookmarks.json');
 const historyFile = path.join(userDataPath, 'history.json');
 const settingsFile = path.join(userDataPath, 'settings.json');
+const passwordsFile = path.join(userDataPath, 'passwords.json');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,7 +20,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
-      webviewTag: true
+      webviewTag: true,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
     },
     titleBarStyle: 'default',
     frame: true
@@ -129,6 +131,8 @@ ipcMain.handle('load-settings', async () => {
   return null;
 });
 
+ipcMain.handle('get-app-path', () => __dirname);
+
 ipcMain.handle('save-settings', async (event, settings) => {
   try {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
@@ -162,7 +166,77 @@ ipcMain.handle('save-history', async (event, history) => {
   }
 });
 
-app.whenReady().then(createWindow);
+// Gestione Password
+ipcMain.handle('load-passwords', async () => {
+  try {
+    if (fs.existsSync(passwordsFile)) {
+      const data = fs.readFileSync(passwordsFile, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Errore caricamento password:', err);
+  }
+  return [];
+});
+
+ipcMain.handle('save-passwords', async (event, passwords) => {
+  try {
+    fs.writeFileSync(passwordsFile, JSON.stringify(passwords, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Errore salvataggio password:', err);
+    return false;
+  }
+});
+
+// Disabilitiamo il rilevamento di automazione e forziamo JavaScript
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+app.commandLine.appendSwitch('disable-features', 'UserAgentClientHint');
+app.commandLine.appendSwitch('enable-javascript', 'true');
+app.commandLine.appendSwitch('no-sandbox'); 
+app.commandLine.appendSwitch('disable-infobars');
+app.commandLine.appendSwitch('lang', 'it-IT');
+app.commandLine.appendSwitch('remote-debugging-port', '0'); 
+
+app.whenReady().then(() => {
+  const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+  
+  // Applichiamo UA globale
+  session.defaultSession.setUserAgent(userAgent);
+  
+  // Sessione per il webview
+  const cosmoSession = session.fromPartition('persist:cosmonet_session');
+  cosmoSession.setUserAgent(userAgent);
+  
+  // Mascheramento headers per tutto il traffico
+  const filter = { urls: ['*://*/*'] };
+  
+  cosmoSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+    details.requestHeaders['User-Agent'] = userAgent;
+    
+    // Rimuoviamo ogni traccia di Electron/Automazione (Google bypass)
+    delete details.requestHeaders['X-Requested-With'];
+    delete details.requestHeaders['X-DevTools-Request-Id'];
+    
+    // Rimuoviamo Client Hints che rivelano Electron
+    for (let header in details.requestHeaders) {
+      if (header.toLowerCase().startsWith('sec-ch-ua')) {
+        delete details.requestHeaders[header];
+      }
+    }
+    
+    callback({ cancel: false, requestHeaders: details.requestHeaders });
+  });
+
+  // Anche per la sessione di default per massima sicurezza
+  session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+    details.requestHeaders['User-Agent'] = userAgent;
+    delete details.requestHeaders['X-Requested-With'];
+    callback({ cancel: false, requestHeaders: details.requestHeaders });
+  });
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

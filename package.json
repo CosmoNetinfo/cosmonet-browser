@@ -1,10 +1,12 @@
 {
   "name": "cosmonet-browser",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "Browser personalizzato per cosmonet.info",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "build": "electron-builder"
   },
   "keywords": [

@@ -7,8 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveHistory: (history) => ipcRenderer.invoke('save-history', history),
   loadSettings: () => ipcRenderer.invoke('load-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+  loadPasswords: () => ipcRenderer.invoke('load-passwords'),
+  savePasswords: (passwords) => ipcRenderer.invoke('save-passwords', passwords),
   onNewTab: (callback) => ipcRenderer.on('new-tab', callback),
   onCloseTab: (callback) => ipcRenderer.on('close-tab', callback),
   onReloadTab: (callback) => ipcRenderer.on('reload-tab', callback),
-  onNavigateTo: (callback) => ipcRenderer.on('navigate-to', (event, url) => callback(url))
+  onNavigateTo: (callback) => ipcRenderer.on('navigate-to', (event, url) => callback(url)),
+  getAppPath: () => ipcRenderer.invoke('get-app-path')
 });

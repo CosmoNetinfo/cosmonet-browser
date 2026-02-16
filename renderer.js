@@ -1,8 +1,14 @@
-// Rileva ambiente
-const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.onNewTab !== undefined;
+const isTauri = typeof window.__TAURI__ !== 'undefined';
+const isElectron = !isTauri && typeof window.electronAPI !== 'undefined' && window.electronAPI.onNewTab !== undefined;
 
-// Mock per ambienti non-Electron (Android/Capacitor)
-if (!isElectron) {
+function pathJoin(part1, part2) {
+    if (!part1) return part2;
+    const sep = part1.includes('\\') || part2.includes('\\') ? '\\' : '/';
+    return part1.endsWith(sep) ? part1 + part2 : part1 + sep + part2;
+}
+
+// Mock per ambienti non-Electron/non-Tauri (Android/Capacitor/Web)
+if (!isElectron && !isTauri) {
     window.electronAPI = {
         loadSettings: async () => {
             try {
@@ -41,43 +47,79 @@ let tabs = [];
 let activeTabId = null;
 let bookmarks = [];
 let history = [];
+let savedPasswords = [];
+let appPath = '';
+
+// Stato Drag & Drop
+let draggedBookmark = null;
 
 // Elementi DOM
-const urlBar = document.getElementById('url-bar');
-const backBtn = document.getElementById('back-btn');
-const forwardBtn = document.getElementById('forward-btn');
-const reloadBtn = document.getElementById('reload-btn');
-const homeBtn = document.getElementById('home-btn');
-const bookmarkBtn = document.getElementById('bookmark-btn');
-const newTabBtn = document.getElementById('new-tab-btn');
-const menuBtn = document.getElementById('menu-btn');
-const mainMenu = document.getElementById('main-menu');
-const bookmarksBtn = document.getElementById('bookmarks-btn');
-const historyBtn = document.getElementById('history-btn');
-const tabsBar = document.getElementById('tabs-bar');
-const webviewsContainer = document.getElementById('webviews-container');
-const bookmarksPanel = document.getElementById('bookmarks-panel');
-const historyPanel = document.getElementById('history-panel');
-const settingsPage = document.getElementById('settings-page');
-const bookmarksList = document.getElementById('bookmarks-list');
-const historyList = document.getElementById('history-list');
+let urlBar, backBtn, forwardBtn, reloadBtn, homeBtn, bookmarkBtn, newTabBtn, menuBtn, mainMenu, bookmarksBtn, historyBtn, tabsBar, webviewsContainer, bookmarksPanel, historyPanel, settingsPage, bookmarksList, bookmarksItemsContainer, addFolderBtn, historyList, favoritesBar;
+let cosmoFeedBtn, cosmoFeedPanel, cosmoFeedList, refreshFeedBtn, readingModeOverlay, readingContent, closeReadingModeBtn, saveForLaterBtn;
+let passwordsBtnMenu, passwordsPanel, passwordsList;
+let settingHomeUrlPage, settingSearchEnginePage, settingDarkModePage, saveAllSettingsBtn, closeSettingsPageBtn;
 
-// Elementi Impostazioni (Nuova Pagina)
-const settingHomeUrlPage = document.getElementById('setting-home-url-page');
-const settingSearchEnginePage = document.getElementById('setting-search-engine-page');
-const settingDarkModePage = document.getElementById('setting-dark-mode-page');
-const saveAllSettingsBtn = document.getElementById('save-all-settings-btn');
-const closeSettingsPageBtn = document.getElementById('close-settings-page-btn');
+function initializeElements() {
+    urlBar = document.getElementById('url-bar');
+    backBtn = document.getElementById('back-btn');
+    forwardBtn = document.getElementById('forward-btn');
+    reloadBtn = document.getElementById('reload-btn');
+    homeBtn = document.getElementById('home-btn');
+    bookmarkBtn = document.getElementById('bookmark-btn');
+    newTabBtn = document.getElementById('new-tab-btn');
+    menuBtn = document.getElementById('menu-btn');
+    mainMenu = document.getElementById('main-menu');
+    bookmarksBtn = document.getElementById('bookmarks-btn');
+    historyBtn = document.getElementById('history-btn');
+    tabsBar = document.getElementById('tabs-bar');
+    webviewsContainer = document.getElementById('webviews-container');
+    bookmarksPanel = document.getElementById('bookmarks-panel');
+    historyPanel = document.getElementById('history-panel');
+    settingsPage = document.getElementById('settings-page');
+    bookmarksList = document.getElementById('bookmarks-list');
+    bookmarksItemsContainer = document.getElementById('bookmarks-items-container');
+    addFolderBtn = document.getElementById('add-folder-btn');
+    historyList = document.getElementById('history-list');
+    passwordsBtnMenu = document.getElementById('menu-passwords');
+    passwordsPanel = document.getElementById('passwords-panel');
+    passwordsList = document.getElementById('passwords-list');
+    favoritesBar = document.getElementById('favorites-bar');
+    cosmoFeedBtn = document.getElementById('cosmo-feed-btn');
+    cosmoFeedPanel = document.getElementById('cosmo-feed-panel');
+    cosmoFeedList = document.getElementById('cosmo-feed-list');
+    refreshFeedBtn = document.getElementById('refresh-feed-btn');
+    readingModeOverlay = document.getElementById('reading-mode-overlay');
+    readingContent = document.getElementById('reading-content');
+    closeReadingModeBtn = document.getElementById('close-reading-mode');
+    saveForLaterBtn = document.getElementById('save-for-later-btn');
+    settingHomeUrlPage = document.getElementById('setting-home-url-page');
+    settingSearchEnginePage = document.getElementById('setting-search-engine-page');
+    settingDarkModePage = document.getElementById('setting-dark-mode-page');
+    saveAllSettingsBtn = document.getElementById('save-all-settings-btn');
+    closeSettingsPageBtn = document.getElementById('close-settings-page-btn');
+}
 
 // Inizializzazione
 async function init() {
-    // Carica impostazioni, segnalibri e cronologia
+    initializeElements();
     const savedSettings = await window.electronAPI.loadSettings();
     if (savedSettings) {
         config = { ...config, ...savedSettings };
     }
     
+    if (isElectron) {
+        appPath = await window.electronAPI.getAppPath();
+    }
+    
     bookmarks = await window.electronAPI.loadBookmarks();
+    
+    // Migrazione segnalibri (Aggiunge type e previene errori)
+    bookmarks = bookmarks.map(b => {
+        if (!b.type) b.type = 'bookmark';
+        if (b.type === 'folder' && !b.children) b.children = [];
+        return b;
+    });
+
     history = await window.electronAPI.loadHistory();
     
     // Applica impostazioni iniziali
@@ -90,11 +132,12 @@ async function init() {
     if (config.startupUrls && config.startupUrls.length > 0) {
         config.startupUrls.forEach(url => createTab(url));
     } else {
-        createTab('https://www.cosmonet.info/');
+        createTab('home.html');
     }
     
     // Aggiorna UI
     renderBookmarks();
+    renderFavoritesBar();
     renderHistory();
     updateSettingsUI();
 }
@@ -126,7 +169,21 @@ function setupEventListeners() {
     // Segnalibri e cronologia (Accesso rapido)
     bookmarkBtn.addEventListener('click', toggleBookmark);
     bookmarksBtn.addEventListener('click', () => togglePanel(bookmarksPanel));
+    cosmoFeedBtn.addEventListener('click', () => {
+        togglePanel(cosmoFeedPanel);
+        fetchCosmoFeed();
+    });
     historyBtn.addEventListener('click', () => togglePanel(historyPanel));
+    
+    if (addFolderBtn) {
+        console.log("Attacco listener a addFolderBtn");
+        addFolderBtn.addEventListener('click', (e) => {
+            console.log("Click rilevato su addFolderBtn");
+            createFolder();
+        });
+    } else {
+        console.error("ERRORE: addFolderBtn non trovato nel DOM durante setupEventListeners");
+    }
     
     // Menu a comparsa
     menuBtn.addEventListener('click', (e) => {
@@ -141,8 +198,13 @@ function setupEventListeners() {
     });
 
     // Azioni Menu
+    document.getElementById('menu-add-bookmark').addEventListener('click', () => {
+        toggleBookmark();
+        mainMenu.classList.remove('visible');
+    });
+
     document.getElementById('menu-new-tab').addEventListener('click', () => {
-        createTab(config.homeUrl);
+        createTab('home.html');
         mainMenu.classList.remove('visible');
     });
 
@@ -159,6 +221,12 @@ function setupEventListeners() {
 
     document.getElementById('menu-bookmarks').addEventListener('click', () => {
         togglePanel(bookmarksPanel);
+        mainMenu.classList.remove('visible');
+    });
+
+    passwordsBtnMenu.addEventListener('click', () => {
+        renderPasswords();
+        togglePanel(passwordsPanel);
         mainMenu.classList.remove('visible');
     });
 
@@ -193,7 +261,7 @@ function setupEventListeners() {
     });
     
     // Nuova tab
-    newTabBtn.addEventListener('click', () => createTab('https://www.google.com'));
+    newTabBtn.addEventListener('click', () => createTab('home.html'));
     
     // Chiusura pannelli laterali
     document.querySelectorAll('.close-panel-btn').forEach(btn => {
@@ -204,12 +272,31 @@ function setupEventListeners() {
     
     // Cancella cronologia
     document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
-    
     // Gestione Pagine all'avvio
     document.getElementById('add-startup-url-btn').addEventListener('click', () => {
         config.startupUrls.push('https://');
         renderStartupUrlsList();
     });
+
+    // Cosmo Feed Events
+    if (refreshFeedBtn) {
+        refreshFeedBtn.addEventListener('click', fetchCosmoFeed);
+    }
+    if (closeReadingModeBtn) {
+        closeReadingModeBtn.addEventListener('click', () => readingModeOverlay.classList.remove('active'));
+    }
+    if (saveForLaterBtn) {
+        saveForLaterBtn.addEventListener('click', saveArticleForLater);
+    }
+    
+    // Importazione preferiti
+    const importBookmarksBtn = document.getElementById('import-bookmarks-btn');
+    const importBookmarksFile = document.getElementById('import-bookmarks-file');
+    
+    if (importBookmarksBtn && importBookmarksFile) {
+        importBookmarksBtn.addEventListener('click', () => importBookmarksFile.click());
+        importBookmarksFile.addEventListener('change', handleImportBookmarks);
+    }
     
     // IPC da menu di sistema
     window.electronAPI.onNewTab(() => createTab('https://www.google.com'));
@@ -227,15 +314,56 @@ function setupEventListeners() {
 }
 
 // Gestione tabs
-function createTab(url = 'https://www.google.com') {
+function createTab(url = 'home.html') {
     const tabId = Date.now().toString();
+    const webviewId = `webview-${tabId}`;
     
-    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web)
+    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web, Proxy per Tauri)
     let webview;
-    if (isElectron) {
+    if (isTauri) {
+        const rect = webviewsContainer.getBoundingClientRect();
+        window.electronAPI.createWebView(webviewId, url, rect.left, rect.top, rect.width, rect.height);
+        
+        // Mock per Tauri che emula i metodi del webview di Electron
+        webview = {
+            id: webviewId,
+            src: url,
+            classList: {
+                add: (c) => { if(c === 'active') window.electronAPI.setWebViewVisibility(webviewId, true); },
+                remove: (c) => { if(c === 'active') window.electronAPI.setWebViewVisibility(webviewId, false); },
+                contains: (c) => false
+            },
+            style: {},
+            remove: () => { /* Gestito nella chiusura */ },
+            reload: () => window.electronAPI.reloadWebView(webviewId),
+            goBack: () => window.electronAPI.goBack(webviewId),
+            goForward: () => window.electronAPI.goForward(webviewId),
+            canGoBack: () => true,
+            canGoForward: () => true,
+            getURL: () => url,
+            getTitle: () => 'Tauri Page',
+            setUserAgent: () => {},
+            executeJavaScript: () => {},
+            addEventListener: (name, cb) => {
+                // Eventi base simulati o agganciati tramite bridge
+            }
+        };
+    } else if (isElectron) {
         webview = document.createElement('webview');
         webview.setAttribute('allowpopups', '');
-        webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        // User Agent COMPLETAMENTE standard (Chrome 121 per bypass Google)
+        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+        webview.setAttribute('useragent', userAgent);
+        webview.setAttribute('partition', 'persist:cosmonet_session');
+        // Abilitiamo Javascript e aggiungiamo lo script di stealth (Bypass Google)
+        webview.setAttribute('webpreferences', 'contextIsolation=yes, nodeIntegration=no, webSecurity=yes, javascript=yes, sandbox=no');
+        
+        if (appPath) {
+            const preloadPath = pathJoin(appPath, 'webview-preload.js');
+            webview.setAttribute('preload', preloadPath);
+        }
+        webview.id = webviewId;
+        webview.src = url;
     } else {
         webview = document.createElement('iframe');
         webview.style.border = 'none';
@@ -243,17 +371,24 @@ function createTab(url = 'https://www.google.com') {
         webview.style.height = '100%';
         webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
         webview.setAttribute('allow', 'camera; microphone; geolocation');
+        webview.id = webviewId;
+        webview.src = url;
     }
-    
-    webview.id = `webview-${tabId}`;
-    webview.src = url;
     
     // Event listeners comuni o specifici
     if (isElectron) {
-        webview.addEventListener('did-start-loading', () => updateTabLoading(tabId, true));
+        webview.addEventListener('did-start-loading', () => {
+            updateTabLoading(tabId, true);
+            // Forza User-Agent a ogni caricamento per bypassare il rilevamento webview
+            const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+            webview.setUserAgent(ua);
+        });
+        
         webview.addEventListener('did-stop-loading', () => {
             updateTabLoading(tabId, false);
             updateTabInfo(tabId);
+            updateNavigationButtons();
+            checkLoginForm(webview);
         });
         webview.addEventListener('page-title-updated', (e) => updateTabTitle(tabId, e.title));
         webview.addEventListener('did-navigate', (e) => {
@@ -265,6 +400,8 @@ function createTab(url = 'https://www.google.com') {
         // Fallback per iframe (Android)
         webview.addEventListener('load', () => {
             updateTabLoading(tabId, false);
+            updateNavigationButtons();
+            checkLoginForm(webview);
             try {
                 // Prova a leggere l'URL reale (funziona se stesso dominio)
                 const currentUrl = webview.contentWindow.location.href;
@@ -543,30 +680,59 @@ function getActiveWebview() {
     return tab ? tab.webview : null;
 }
 
-// Segnalibri
+// Segnalibri (Preferiti)
 async function toggleBookmark() {
     const webview = getActiveWebview();
     if (!webview) return;
     
-    const url = webview.getURL();
-    const title = webview.getTitle() || url;
+    let url = '';
+    let title = '';
+    
+    if (isElectron) {
+        try {
+            url = webview.getURL();
+            title = webview.getTitle() || url;
+        } catch (e) {
+            const tab = tabs.find(t => t.id === activeTabId);
+            url = tab ? tab.url : '';
+            title = tab ? tab.title : url;
+        }
+    } else {
+        const tab = tabs.find(t => t.id === activeTabId);
+        url = tab ? tab.url : '';
+        title = tab ? tab.title : url;
+    }
+    
+    if (!url || url === 'about:blank') return;
     
     const existingIndex = bookmarks.findIndex(b => b.url === url);
     
     if (existingIndex >= 0) {
         // Rimuovi segnalibro
-        bookmarks.splice(existingIndex, 1);
+        // Cerca in tutto l'albero se è presente
+        const removeFromTree = (list, u) => {
+            const idx = list.findIndex(b => b.url === u);
+            if (idx >= 0) { list.splice(idx, 1); return true; }
+            for (const item of list) {
+                if (item.type === 'folder' && removeFromTree(item.children, u)) return true;
+            }
+            return false;
+        };
+        removeFromTree(bookmarks, url);
     } else {
         // Aggiungi segnalibro
         bookmarks.unshift({
+            type: 'bookmark',
             title: title,
             url: url,
+            favicon: tabs.find(t => t.id === activeTabId)?.favicon,
             timestamp: Date.now()
         });
     }
     
     await window.electronAPI.saveBookmarks(bookmarks);
     renderBookmarks();
+    renderFavoritesBar();
     updateBookmarkButton();
 }
 
@@ -583,55 +749,413 @@ function updateBookmarkButton() {
     }
     
     if (!url) return;
-    const isBookmarked = bookmarks.some(b => b.url === url);
+    const isBookmarked = bookmarks.some(b => b.url === url) || 
+                        bookmarks.some(b => b.type === 'folder' && b.children.some(c => c.url === url));
     
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
 }
 
 function renderBookmarks() {
+    if (!bookmarksItemsContainer) return;
+    
+    if (!Array.isArray(bookmarks)) {
+        bookmarks = [];
+    }
+    
     if (bookmarks.length === 0) {
-        bookmarksList.innerHTML = `
+        bookmarksItemsContainer.innerHTML = `
             <div class="empty-state">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                 </svg>
-                <p>Nessun segnalibro ancora.<br>Clicca l'icona stella per aggiungerne uno!</p>
+                <p>Nessun preferito ancora.<br>Clicca l'icona stella per aggiungerne uno!</p>
             </div>
         `;
         return;
     }
     
-    bookmarksList.innerHTML = bookmarks.map((bookmark, index) => `
-        <div class="bookmark-item" data-index="${index}">
-            <div class="bookmark-item-content">
-                <div class="bookmark-title">${escapeHtml(bookmark.title)}</div>
-                <div class="bookmark-url">${escapeHtml(bookmark.url)}</div>
-            </div>
-            <button class="delete-bookmark" data-index="${index}">Elimina</button>
-        </div>
-    `).join('');
-    
-    // Event listeners
-    bookmarksList.querySelectorAll('.bookmark-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('delete-bookmark')) {
-                const index = parseInt(item.dataset.index);
-                navigateToUrl(bookmarks[index].url);
-                bookmarksPanel.classList.remove('open');
+    bookmarksItemsContainer.innerHTML = '';
+    renderBookmarkList(bookmarks, bookmarksItemsContainer);
+}
+
+function renderBookmarkList(list, container) {
+    list.forEach((bookmark, index) => {
+        const item = document.createElement('div');
+        item.className = `bookmark-item ${bookmark.type === 'folder' ? 'is-folder' : ''}`;
+        item.draggable = true;
+        
+        // Data per il drag & drop
+        item.dataset.index = index;
+        item.dataset.type = bookmark.type;
+        if (bookmark.type === 'folder') {
+            item.innerHTML = `
+                <div class="bookmark-item-content folder-toggle">
+                    <div class="bookmark-title">
+                        <span class="folder-arrow">▶</span>
+                        <span class="folder-icon">📁</span>
+                        <span>${escapeHtml(bookmark.title)}</span>
+                    </div>
+                </div>
+                <div class="folder-actions">
+                    <button class="delete-bookmark">Elimina</button>
+                </div>
+            `;
+            
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'bookmark-folder-children';
+            childrenContainer.style.display = 'none'; // Chiusa di default
+            renderBookmarkList(bookmark.children, childrenContainer);
+            
+            // Toggle della cartella (Usa mousedown per evitare conflitti con onclick di navigazione se presenti)
+            const toggle = item.querySelector('.folder-toggle');
+            toggle.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isVisible = childrenContainer.style.display === 'block';
+                childrenContainer.style.display = isVisible ? 'none' : 'block';
+                toggle.querySelector('.folder-arrow').style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+                item.classList.toggle('folder-open', !isVisible);
+            };
+
+            container.appendChild(item);
+            container.appendChild(childrenContainer);
+        } else {
+            // Genera opzioni solo per le cartelle di primo livello per semplicità e stabilità
+            const folderOptions = bookmarks
+                .map((b, i) => b.type === 'folder' ? `<option value="${i}">${escapeHtml(b.title)}</option>` : '')
+                .join('');
+            
+            item.innerHTML = `
+                <div class="bookmark-item-content">
+                    <div class="bookmark-title">${escapeHtml(bookmark.title)}</div>
+                    <div class="bookmark-url">${escapeHtml(bookmark.url)}</div>
+                </div>
+                <div class="folder-actions">
+                    <select class="move-to-folder-select">
+                        <option value="-1">Sposta in...</option>
+                        <option value="root">Radice</option>
+                        ${folderOptions}
+                    </select>
+                    <button class="delete-bookmark">Elimina</button>
+                </div>
+            `;
+            container.appendChild(item);
+        }
+
+        // Click sul contenuto (Navigazione)
+        const content = item.querySelector('.bookmark-item-content');
+        if (content) {
+            content.onclick = () => {
+                const b = list[index];
+                if (b.type !== 'folder') {
+                    navigateToUrl(b.url);
+                    bookmarksPanel.classList.remove('open');
+                }
+            };
+        }
+
+        // Pulsante Elimina
+        const delBtn = item.querySelector('.delete-bookmark');
+        if (delBtn) {
+            delBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm(`Sei sicuro di voler eliminare ${bookmark.type === 'folder' ? 'la cartella e tutto il suo contenuto' : 'questo segnalibro'}?`)) {
+                    list.splice(index, 1);
+                    await window.electronAPI.saveBookmarks(bookmarks);
+                    renderBookmarks();
+                    renderFavoritesBar();
+                    updateBookmarkButton();
+                }
+            };
+        }
+
+        // Menu "Sposta in..."
+        const moveSelect = item.querySelector('.move-to-folder-select');
+        if (moveSelect) {
+            moveSelect.onchange = async () => {
+                const targetIdx = moveSelect.value;
+                if (targetIdx === "-1") return;
+                
+                // Rimuovi dall'array attuale
+                const itemToMove = list.splice(index, 1)[0];
+
+                if (targetIdx === 'root') {
+                    bookmarks.push(itemToMove);
+                } else {
+                    const idx = parseInt(targetIdx);
+                    if (bookmarks[idx] && bookmarks[idx].type === 'folder') {
+                        bookmarks[idx].children.push(itemToMove);
+                    } else {
+                        bookmarks.push(itemToMove); // Fallback
+                    }
+                }
+
+                await window.electronAPI.saveBookmarks(bookmarks);
+                renderBookmarks();
+                renderFavoritesBar();
+            };
+        }
+
+        // --- GESTIONE DRAG & DROP ---
+        item.addEventListener('dragstart', (e) => {
+            e.stopPropagation();
+            item.classList.add('dragging');
+            draggedBookmark = bookmark; // Archivia l'oggetto reale
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            document.querySelectorAll('.bookmark-item').forEach(i => i.classList.remove('drag-over'));
+            draggedBookmark = null;
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (bookmark.type === 'folder' && draggedBookmark !== bookmark) {
+                item.classList.add('drag-over');
+            }
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            item.classList.remove('drag-over');
+
+            if (draggedBookmark && bookmark.type === 'folder' && draggedBookmark !== bookmark && !isBookmarkDescendant(draggedBookmark, bookmark)) {
+                // Spostamento logico robusto
+                if (removeBookmarkFromTree(bookmarks, draggedBookmark)) {
+                    if (!bookmark.children) bookmark.children = [];
+                    bookmark.children.push(draggedBookmark);
+                    await window.electronAPI.saveBookmarks(bookmarks);
+                    renderBookmarks();
+                    renderFavoritesBar();
+                }
             }
         });
     });
+}
+
+function createFolder() {
+    console.log("createFolder chiamata");
     
-    bookmarksList.querySelectorAll('.delete-bookmark').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const index = parseInt(btn.dataset.index);
-            bookmarks.splice(index, 1);
+    // Rimuovi input temporanei già presenti
+    const existing = document.getElementById('temp-folder-container');
+    if (existing) {
+        existing.querySelector('input').focus();
+        return;
+    }
+
+    if (!bookmarksItemsContainer) return;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.id = 'temp-folder-container';
+    tempDiv.className = 'bookmark-item';
+    tempDiv.style.border = '1px solid #2563eb';
+    tempDiv.style.padding = '10px';
+    tempDiv.style.borderRadius = '8px';
+    tempDiv.style.margin = '5px 0';
+    tempDiv.style.display = 'flex';
+    tempDiv.style.flexDirection = 'column';
+    tempDiv.style.gap = '8px';
+
+    tempDiv.innerHTML = `
+        <input type="text" id="temp-folder-input" placeholder="Nome cartella..." 
+               style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; outline: none; font-size: 14px; background: white; color: #111827;">
+        <div style="display: flex; gap: 5px;">
+            <button id="confirm-folder-btn" style="flex:1; padding: 6px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;">Crea</button>
+            <button id="cancel-folder-btn" style="flex:1; padding: 6px; background: #9ca3af; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;">Annulla</button>
+        </div>
+    `;
+
+    // Se la lista è vuota, puliamo l'empty-state
+    if (bookmarks.length === 0) {
+        bookmarksItemsContainer.innerHTML = '';
+    }
+
+    bookmarksItemsContainer.prepend(tempDiv);
+    const input = document.getElementById('temp-folder-input');
+    input.focus();
+
+    document.getElementById('confirm-folder-btn').onclick = async () => {
+        const name = input.value.trim();
+        if (name) {
+            if (!Array.isArray(bookmarks)) bookmarks = [];
+            bookmarks.push({
+                type: 'folder',
+                title: name,
+                children: [],
+                timestamp: Date.now()
+            });
+            console.log("Cartella creata:", name);
             await window.electronAPI.saveBookmarks(bookmarks);
             renderBookmarks();
-            updateBookmarkButton();
+            renderFavoritesBar();
+        } else {
+            renderBookmarks(); // Ripristina l'interfaccia
+        }
+    };
+
+    document.getElementById('cancel-folder-btn').onclick = () => {
+        renderBookmarks();
+    };
+
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') document.getElementById('confirm-folder-btn').click();
+        if (e.key === 'Escape') renderBookmarks();
+    };
+}
+
+function renderFavoritesBar() {
+    if (!favoritesBar) return;
+    
+    if (bookmarks.length === 0) {
+        favoritesBar.innerHTML = `<span style="color: #9ca3af; font-size: 11px; margin-left: 5px;">I tuoi preferiti appariranno qui</span>`;
+        return;
+    }
+
+    favoritesBar.innerHTML = bookmarks.slice(0, 15).map((bookmark, index) => {
+        let itemHtml = '';
+        if (bookmark.type === 'folder') {
+            const childrenHtml = (bookmark.children || []).map(child => {
+                try {
+                    const domain = new URL(child.url).hostname;
+                    const fav = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                    return `
+                        <div class="folder-dropdown-item" onclick="navigateToUrl('${child.url}')">
+                            <img src="${child.favicon || fav}" 
+                                 onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23fbbf24%22 stroke-width=%222%22><path d=%22M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z%22/></svg>';"
+                                 loading="lazy">
+                            <span>${escapeHtml(child.title)}</span>
+                        </div>
+                    `;
+                } catch(e) { return ''; }
+            }).join('');
+
+            itemHtml = `
+                <div class="favorite-item favorite-folder" data-index="${index}" title="${escapeHtml(bookmark.title)}">
+                    <span class="folder-icon">📁</span>
+                    <span class="fav-title">${escapeHtml(bookmark.title)}</span>
+                    <div class="folder-dropdown">${childrenHtml || '<div class="folder-dropdown-item">Vuota</div>'}</div>
+                </div>
+            `;
+        } else {
+            const domain = new URL(bookmark.url).hostname;
+            const defaultFavicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+            
+            itemHtml = `
+                <div class="favorite-item" data-index="${index}" title="${escapeHtml(bookmark.url)}" onclick="navigateToUrl('${bookmark.url}')">
+                    <img src="${bookmark.favicon || defaultFavicon}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236b7280%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>'">
+                    <span class="fav-title">${escapeHtml(bookmark.title)}</span>
+                </div>
+            `;
+        }
+        return itemHtml;
+    }).join('');
+
+    // Aggiungi event listeners per il drag & drop sulla barra dei preferiti
+    document.querySelectorAll('.favorite-item').forEach(item => {
+        item.draggable = true;
+        
+        item.addEventListener('dragstart', (e) => {
+            const idx = item.dataset.index;
+            draggedBookmark = bookmarks[idx];
+            item.classList.add('dragging');
         });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            draggedBookmark = null;
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (item.classList.contains('favorite-folder')) {
+                item.classList.add('drag-over');
+            }
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            
+            if (draggedBookmark && item.classList.contains('favorite-folder')) {
+                const targetIdx = item.dataset.index;
+                const targetFolder = bookmarks[targetIdx];
+                
+                if (draggedBookmark === targetFolder || isBookmarkDescendant(draggedBookmark, targetFolder)) return;
+
+                if (removeBookmarkFromTree(bookmarks, draggedBookmark)) {
+                    if (!targetFolder.children) targetFolder.children = [];
+                    targetFolder.children.push(draggedBookmark);
+                    await window.electronAPI.saveBookmarks(bookmarks);
+                    renderBookmarks();
+                    renderFavoritesBar();
+                }
+            }
+        });
+
+        // Toggle cartelle su mousedown per evitare conflitti con navigazione webview
+        if (item.classList.contains('favorite-folder')) {
+            item.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isActive = item.classList.contains('active');
+                // Chiudi tutte le altre cartelle aperte
+                document.querySelectorAll('.favorite-folder').forEach(f => {
+                    if (f !== item) f.classList.remove('active');
+                });
+                item.classList.toggle('active');
+            };
+            // Disabilita click standard
+            item.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+        }
     });
+}
+
+// Chiudi cartelle favorites bar cliccando altrove (Aggiunto globalmente una sola volta)
+document.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.favorite-folder')) {
+        document.querySelectorAll('.favorite-folder').forEach(f => f.classList.remove('active'));
+    }
+});
+
+// Verifica se un segnalibro è un discendente (figlio, nipote, ecc.) di un altro
+function isBookmarkDescendant(parent, potentialChild) {
+    if (!parent || parent.type !== 'folder' || !parent.children) return false;
+    for (const child of parent.children) {
+        if (child === potentialChild) return true;
+        if (child.type === 'folder' && isBookmarkDescendant(child, potentialChild)) return true;
+    }
+    return false;
+}
+
+// Funzione helper ricorsiva per rimuovere un segnalibro dall'albero
+function removeBookmarkFromTree(list, itemToFind) {
+    if (!Array.isArray(list)) return false;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i] === itemToFind) {
+            list.splice(i, 1);
+            return true;
+        }
+        if (list[i].type === 'folder' && list[i].children) {
+            if (removeBookmarkFromTree(list[i].children, itemToFind)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // Cronologia
@@ -729,9 +1253,73 @@ function formatTime(timestamp) {
 }
 
 function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text);
     return div.innerHTML;
+}
+
+// Funzioni di importazione
+async function handleImportBookmarks(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const content = e.target.result;
+        const imported = parseBookmarksHTML(content);
+        
+        if (imported.length > 0) {
+            if (confirm(`Trovati ${imported.length} preferiti. Vuoi importarli?`)) {
+                // Aggiungi solo quelli non esistenti
+                let addedCount = 0;
+                imported.forEach(item => {
+                    if (!bookmarks.some(b => b.url === item.url)) {
+                        bookmarks.push({
+                            title: item.title,
+                            url: item.url,
+                            timestamp: Date.now()
+                        });
+                        addedCount++;
+                    }
+                });
+                
+                await window.electronAPI.saveBookmarks(bookmarks);
+                renderBookmarks();
+                renderFavoritesBar();
+                alert(`Importazione completata! Aggiunti ${addedCount} nuovi preferiti.`);
+            }
+        } else {
+            alert("Non ho trovato preferiti validi in questo file. Assicurati che sia un file HTML esportato dal tuo browser.");
+        }
+        
+        // Reset input
+        event.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+function parseBookmarksHTML(html) {
+    const results = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // I preferiti nei file esportati sono solitamente in tag <a> all'interno di <dt>
+    const links = doc.querySelectorAll('a');
+    
+    links.forEach(link => {
+        const url = link.getAttribute('href');
+        const title = link.textContent.trim();
+        
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            results.push({
+                url: url,
+                title: title || url
+            });
+        }
+    });
+    
+    return results;
 }
 
 // Gestione Impostazioni
@@ -791,6 +1379,243 @@ function updateSettingsUI() {
     renderStartupUrlsList();
     settingSearchEnginePage.value = config.searchEngine;
     settingDarkModePage.checked = config.darkMode;
+}
+
+// Cosmo Feed & Reading Mode
+let currentFeedArticles = [];
+
+async function fetchCosmoFeed() {
+    if (!cosmoFeedList) return;
+    cosmoFeedList.innerHTML = '<div class="feed-loading">Aggiornamento in corso...</div>';
+    
+    try {
+        const response = await fetch('https://www.cosmonet.info/feed/');
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        const items = xml.querySelectorAll('item');
+        
+        currentFeedArticles = Array.from(items).map(item => {
+            const title = item.querySelector('title')?.textContent || 'Senza titolo';
+            const link = item.querySelector('link')?.textContent || '';
+            const pubDate = item.querySelector('pubDate')?.textContent || '';
+            const creator = item.querySelector('dc\\:creator, creator')?.textContent || 'CosmoNet';
+            const content = item.querySelector('content\\:encoded, description')?.textContent || '';
+            
+            // Estrai prima immagine se presente
+            let thumbnail = '';
+            const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+            if (imgMatch) thumbnail = imgMatch[1];
+
+            return { title, link, pubDate, creator, content, thumbnail };
+        });
+        
+        renderCosmoFeed();
+    } catch (e) {
+        console.error('Errore caricamento feed:', e);
+        cosmoFeedList.innerHTML = '<div class="feed-loading">Errore nel caricamento del feed. Verifica la connessione.</div>';
+    }
+}
+
+function renderCosmoFeed() {
+    if (currentFeedArticles.length === 0) {
+        cosmoFeedList.innerHTML = '<div class="feed-loading">Nessun articolo trovato.</div>';
+        return;
+    }
+    
+    cosmoFeedList.innerHTML = currentFeedArticles.map((article, index) => `
+        <div class="feed-item" onclick="openReadingMode(${index})">
+            ${article.thumbnail ? `<img src="${article.thumbnail}" class="feed-item-image">` : ''}
+            <div class="feed-item-title">${escapeHtml(article.title)}</div>
+            <div class="feed-item-meta">${article.creator} • ${formatTime(new Date(article.pubDate).getTime())}</div>
+            <div class="feed-item-summary">${stripHtml(article.content).substring(0, 150)}...</div>
+        </div>
+    `).join('');
+}
+
+function openReadingMode(index) {
+    const article = currentFeedArticles[index];
+    if (!article) return;
+    
+    readingContent.innerHTML = `
+        <h1>${escapeHtml(article.title)}</h1>
+        <div class="feed-item-meta" style="font-size: 16px; margin-bottom: 30px;">
+            Scritto da <b>${article.creator}</b> il ${new Date(article.pubDate).toLocaleDateString('it-IT')}
+        </div>
+        <div class="article-body">
+            ${article.content}
+        </div>
+        <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
+        <div style="text-align: center;">
+            <p>Vuoi partecipare alla discussione?</p>
+            <button class="cosmo-btn-secondary" onclick="navigateToUrl('${article.link}'); document.getElementById('reading-mode-overlay').classList.remove('active');">
+                Apri articolo originale e commenta
+            </button>
+        </div>
+    `;
+    
+    readingModeOverlay.dataset.currentUrl = article.link;
+    readingModeOverlay.dataset.currentTitle = article.title;
+    readingModeOverlay.classList.add('active');
+}
+
+function saveArticleForLater() {
+    const url = readingModeOverlay.dataset.currentUrl;
+    const title = readingModeOverlay.dataset.currentTitle;
+    
+    if (!url) return;
+    
+    // Cerca o crea la cartella "Da leggere"
+    let readingListFolder = bookmarks.find(b => b.type === 'folder' && b.title === 'Da leggere');
+    if (!readingListFolder) {
+        readingListFolder = {
+            type: 'folder',
+            title: 'Da leggere',
+            children: []
+        };
+        bookmarks.push(readingListFolder);
+    }
+    
+    if (!readingListFolder.children.some(b => b.url === url)) {
+        readingListFolder.children.unshift({
+            type: 'bookmark',
+            title: title,
+            url: url,
+            timestamp: Date.now()
+        });
+        window.electronAPI.saveBookmarks(bookmarks);
+        renderBookmarks();
+        renderFavoritesBar();
+        alert('Articolo salvato nella cartella "Da leggere"!');
+    } else {
+        alert('Articolo già presente nei preferiti.');
+    }
+}
+
+function stripHtml(html) {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+}
+
+// --- GESTIONE PASSWORD ---
+async function renderPasswords() {
+    if (!passwordsList) return;
+    
+    try {
+        savedPasswords = await window.electronAPI.loadPasswords();
+        if (!Array.isArray(savedPasswords)) savedPasswords = [];
+    } catch (err) {
+        console.error("Errore caricamento password:", err);
+        savedPasswords = [];
+    }
+    
+    if (savedPasswords.length === 0) {
+        passwordsList.innerHTML = `
+            <div class="empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <p>Nessuna password salvata ancora.</p>
+            </div>
+        `;
+        return;
+    }
+
+    passwordsList.innerHTML = savedPasswords.map((p, index) => `
+        <div class="password-item">
+            <div class="bookmark-item-content">
+                <div class="password-site">${escapeHtml(new URL(p.url).hostname)}</div>
+                <div class="password-user">${escapeHtml(p.username)}</div>
+            </div>
+            <div class="password-actions">
+                <button class="toggle-pass-btn" data-index="${index}" onclick="togglePasswordVisibility(this)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                <button class="delete-bookmark" onclick="deletePassword(${index})">Elimina</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.togglePasswordVisibility = function(btn) {
+    const index = btn.dataset.index;
+    const p = savedPasswords[index];
+    const isShowing = btn.dataset.showing === 'true';
+    const userDiv = btn.closest('.password-item').querySelector('.password-user');
+    
+    if (isShowing) {
+        btn.dataset.showing = 'false';
+        userDiv.textContent = p.username;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    } else {
+        btn.dataset.showing = 'true';
+        userDiv.textContent = p.password;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+    }
+}
+
+window.deletePassword = async function(index) {
+    if (confirm('Vuoi davvero eliminare questa password?')) {
+        savedPasswords.splice(index, 1);
+        await window.electronAPI.savePasswords(savedPasswords);
+        renderPasswords();
+    }
+}
+
+function checkLoginForm(webview) {
+    if (!isElectron) return;
+    
+    const script = `
+        (function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                if (form.dataset.cosmoTracked) return;
+                form.dataset.cosmoTracked = 'true';
+                form.addEventListener('submit', () => {
+                    try {
+                        const userField = form.querySelector('input[type="text"], input[type="email"], input[name*="user"], input[name*="login"]');
+                        const passField = form.querySelector('input[type="password"]');
+                        if (userField && passField && userField.value && passField.value) {
+                            console.log('PASSWORD_MANAGER_SAVE:' + JSON.stringify({
+                                u: userField.value,
+                                p: passField.value,
+                                url: window.location.href
+                            }));
+                        }
+                    } catch(e) {}
+                });
+            });
+        })();
+    `;
+    
+    webview.executeJavaScript(script);
+    
+    webview.addEventListener('console-message', async (e) => {
+        if (e.message.startsWith('PASSWORD_MANAGER_SAVE:')) {
+            try {
+                const data = JSON.parse(e.message.split('PASSWORD_MANAGER_SAVE:')[1]);
+                if (confirm(`Vuoi salvare la password per ${new URL(data.url).hostname}?`)) {
+                    savedPasswords = await window.electronAPI.loadPasswords() || [];
+                    const exists = savedPasswords.find(p => p.url === data.url && p.username === data.u);
+                    if (!exists) {
+                        savedPasswords.push({
+                            url: data.url,
+                            username: data.u,
+                            password: data.p,
+                            timestamp: Date.now()
+                        });
+                        await window.electronAPI.savePasswords(savedPasswords);
+                        renderPasswords();
+                    }
+                }
+            } catch(err) {
+                console.error("Errore salvataggio password:", err);
+            }
+        }
+    });
 }
 
 // Avvia applicazione

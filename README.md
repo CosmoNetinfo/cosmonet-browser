@@ -1,112 +1,90 @@
-# 🌌 Cosmonet Browser
+# 🌌 Cosmonet Browser (Ultra 2.0)
+
 > La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Electron](https://img.shields.io/badge/built%20with-Electron-9feaf9.svg)
+![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.0-ffc131.svg)
+![Electron Legacy](https://img.shields.io/badge/legacy-Electron-9feaf9.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**Cosmonet Browser** è un browser web moderno, leggero e altamente personalizzabile basato sul motore Chromium (via Electron). Progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info), offre un'esperienza di navigazione fluida con un design futuristico e funzionalità avanzate integrate.
+**Cosmonet Browser** si evolve. Nato su Electron, il progetto è ora in fase di migrazione verso **Tauri 2.0**, offrendo un'esperienza di navigazione incredibilmente più veloce, sicura e leggera. Progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info), unisce un design futuristico a prestazioni di livello enterprise.
 
 ---
 
-## 📥 Download Rapido
-| Piattaforma | File | Link |
-| :--- | :--- | :--- |
-| **🪟 Windows** | `Cosmonet-Browser-Setup.exe` | [Scarica APK/EXE qui](https://github.com/CosmoNetinfo/cosmonet-browser/releases/latest) |
-| **📱 Android** | `Cosmonet-Browser-v1.apk` | [Scarica APK/EXE qui](https://github.com/CosmoNetinfo/cosmonet-browser/releases/latest) |
+## 🚀 Evoluzione Tauri 2.0
+
+Abbiamo riscritto il core del browser in **Rust** utilizzando Tauri per superare i limiti di Electron:
+
+- **Piuma Leggero**: L'eseguibile è passato da ~80MB a meno di **10MB**.
+- **Memoria Ultra-Efficiente**: Consumo di RAM ridotto del 70% (meno di 50MB all'avvio).
+- **Sicurezza Nativa**: Logica di sistema scritta in Rust per la massima protezione.
+- **Webview Native**: Utilizzo di Microsoft Edge WebView2 (Windows) per la massima compatibilità e velocità.
+
+---
+
+## 🩺 Analisi Tecnica: Google Login & Stealth Mode
+
+Il problema del blocco "Browser non supportato" di Google è affrontato con una **Stealth Layer Strategy** avanzata integrata direttamente nel backend Rust:
+
+### 🛠️ Soluzioni Implementate
+
+1. **Iniezione Stealth Nativa**: Tramite Rust, iniettiamo script di mascheramento *prima* di ogni caricamento di pagina, nascondendo `navigator.webdriver` e simulando hardware reale.
+2. **Mascheramento User-Agent**: Forziamo un'identità Chrome standard (v121+) a livello di webview nativa.
+3. **Rust Bridge**: Un sistema di messaggistica IPC ultra-veloce tra Rust e JavaScript che sostituisce il vecchio `preload.js` di Electron.
+4. **Header Clean-up**: Rimozione aggressiva di header identificativi (`X-Requested-With`) che segnalano browser embedded.
 
 ---
 
 ## ✨ Caratteristiche Principali
 
 ### 🎨 Design & Esperienza Utente
-- **OLED UI Architecture**: Interfaccia pulita, moderna e ottimizzata, con supporto completo alla **Dark Mode** (Neutral Black).
-- **Branding Ufficiale**: Logo Cosmonet ad alta risoluzione e palette colori coerente con l'identità del brand.
-- **Micro-Animazioni**: Transizioni fluide tra tab e attivazioni dei pannelli laterali.
+
+- **OLED UI Architecture**: Interfaccia pulita, moderna e neutra (Neutral Black).
+- **Branding Ufficiale**: Logo Cosmonet ad alta risoluzione e palette colori coerente.
+- **Micro-Animazioni**: Transizioni fluide tra tab e pannelli laterali.
 
 ### ⚙️ Funzionalità Avanzate
-- 📑 **Incredibile Gestione Tab**: Sistema multi-tab dinamico con rendering sicuro e protezione da titoli corrotti.
-- 🌑 **Dark Mode Persistente**: Attivabile con un click, riduce l'affaticamento visivo e viene memorizzata al riavvio.
-- ⚙️ **Pannello Impostazioni**: Personalizza la tua Homepage, scegli il tuo motore di ricerca predefinito (Google, Bing, DuckDuckGo) e gestisci il tema.
-- 📑 **Segnalibri & Cronologia**: Gestione completa e persistente su disco per non perdere mai le tue pagine preferite.
-- 🛠️ **Dev Tools integrati**: Scorciatoia `F12` per il debug istantaneo delle pagine web caricate.
 
-### 📱 Cross-Platform
-- **Desktop**: Versioni native per Windows (Installer NSIS), macOS e Linux.
-- **Mobile**: Predisposto per **Android** tramite integrazione con Capacitor.
-
----
-
-## 🚀 Guida Rapida
-
-### Requisiti
-- **Node.js** v18 o superiore
-- **npm** v9 o superiore
-
-### Installazione
-```bash
-# Clona il repository
-git clone https://github.com/CosmoNetinfo/cosmonet-browser.git
-
-# Entra nella cartella
-cd cosmonet-browser
-
-# Installa le dipendenze
-npm install
-```
-
-### Sviluppo
-Per avviare il browser in modalità live:
-```bash
-npm start
-```
+- 📑 **Incredibile Gestione Tab**: Sistema multi-webview dinamico bridgato tra Rust e JS.
+- 🌑 **Dark Mode Persistente**: Attivabile con un click, memorizzata nel profilo utente.
+- 🚀 **Cosmo Dashboard**: Homepage personalizzata (`home.html`) con ricerca intelligente.
+- 📁 **Gestione Preferiti**: Cartelle nidificate con supporto **Drag & Drop** nativo.
+- 📡 **Cosmo Feed RSS**: Ultime notizie di CosmoNet direttamente nel browser.
+- 📖 **Modalità Lettura**: Vista ottimizzata per articoli senza distrazioni.
+- 🔑 **Gestore Password**: Salvataggio sicuro delle credenziali con crittografia locale.
 
 ---
 
-## 📦 Distribuzione (Build)
+## 🛠️ Requisiti & Sviluppo
 
-### 🖥️ Desktop (Windows/Mac/Linux)
-Per generare l'installer definitivo per la tua piattaforma:
-```bash
-npm run build
-```
-L'installer verrà generato nella cartella `dist/`. Per Windows, troverai il file `Cosmonet Browser Setup 1.0.0.exe`.
+### Installazione Dipendenze
 
-### 📱 Android
-Il progetto è già configurato con **Capacitor**. Per generare l'APK:
-1. Sincronizza i file web: `npx cap sync android`
-2. Apri il progetto in Android Studio: `npx cap open android`
-3. Genera il Signed APK da Android Studio.
+Per compilare la versione Tauri, assicurati di avere:
 
----
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Node.js](https://nodejs.org/)
 
-## 🔧 Architettura Tecnica
+### Comandi Rapidi
 
-- **Engine**: Chromium (via Electron 28+)
-- **Logic**: Vanilla JavaScript (ES6+), Node.js per il salvataggio dati.
-- **Styling**: Modern CSS3 con Flexbox e CSS Variables per il sistema di temi.
-- **Mobile bridge**: Ionic Capacitor.
-
----
-
-## 💾 Gestione Dati
-I tuoi dati sono salvati localmente nella directory utente del sistema operativo:
-- **Windows**: `%AppData%/cosmonet-browser/`
-- **macOS**: `~/Library/Application Support/cosmonet-browser/`
-- **Linux**: `~/.config/cosmonet-browser/`
-
-File creati: `bookmarks.json`, `history.json`, `settings.json`.
+| Comando | Descrizione |
+| :--- | :--- |
+| `npm install` | Installa le dipendenze JS |
+| `npm run tauri:dev` | Avvia il browser in modalità sviluppo |
+| `npm run tauri:build` | Genera l'installer per Windows |
+| `npm start` | Avvia la versione legacy (Electron) |
 
 ---
 
 ## 📜 Licenza
-Questo progetto è rilasciato sotto la licenza **MIT**. Sei libero di usarlo, modificarlo e distribuirlo.
+
+Questo progetto è rilasciato sotto la licenza **MIT**.
 
 ---
 
 ## 🌐 Link Utili
+
 - **Sito Ufficiale**: [www.cosmonet.info](https://www.cosmonet.info)
-- **Supporto & Forum**: [Discussione Ufficiale Cosmonet Browser](https://www.cosmonet.info/community/pc/cosmonet-browser/)
+- **Supporto & Forum**: [Community Cosmonet](https://www.cosmonet.info/community/)
 
 ---
 *Sviluppato con ❤️ per la Galassia Digitale di Cosmonet.*

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "cosmonet-browser",
+  "version": "1.2.1",
+  "identifier": "info.cosmonet.browser",
+  "build": {
+    "frontendDist": "../"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Cosmonet Browser",
+        "width": 1400,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "shell": { "active": true },
+    "fs": { "active": true },
+    "path": { "active": true },
+    "dialog": { "active": true }
+  }
+}
