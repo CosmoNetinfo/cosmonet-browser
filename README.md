@@ -106,7 +106,7 @@ cargo --version
 
 ### Struttura del Progetto
 
-```
+```text
 cosmonet-browser/
 ├── src-tauri/              # Backend Rust (Tauri)
 │   ├── src/

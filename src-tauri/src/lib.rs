@@ -1,7 +1,7 @@
-use tauri::{command, AppHandle, Manager, Runtime, Emitter};
+use tauri::{command, AppHandle, Manager, Runtime};
 use serde_json::{json, Value};
 use std::fs;
-use url::Url;
+// use url::Url;
 
 #[command]
 async fn load_bookmarks<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
@@ -165,7 +165,7 @@ pub fn run() {
             navigate_webview, webview_go_back,
             webview_go_forward, webview_reload
         ])
-        .setup(|app| {
+        .setup(|_app| {
             // Qui andrà la logica del menu di sistema se necessaria
             Ok(())
         })
