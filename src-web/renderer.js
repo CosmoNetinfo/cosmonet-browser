@@ -101,45 +101,73 @@ function initializeElements() {
 
 // Inizializzazione
 async function init() {
-    initializeElements();
-    const savedSettings = await window.electronAPI.loadSettings();
-    if (savedSettings) {
-        config = { ...config, ...savedSettings };
-    }
-    
-    if (isElectron) {
-        appPath = await window.electronAPI.getAppPath();
-    }
-    
-    bookmarks = await window.electronAPI.loadBookmarks();
-    
-    // Migrazione segnalibri (Aggiunge type e previene errori)
-    bookmarks = bookmarks.map(b => {
-        if (!b.type) b.type = 'bookmark';
-        if (b.type === 'folder' && !b.children) b.children = [];
-        return b;
-    });
+    console.log("Starting Browser Initialization...");
+    try {
+        initializeElements();
+        
+        let savedSettings = null;
+        try {
+            savedSettings = await window.electronAPI.loadSettings();
+        } catch (e) { console.error("Error loading settings:", e); }
+        
+        if (savedSettings) {
+            config = { ...config, ...savedSettings };
+        }
+        
+        if (isElectron) {
+            try {
+                appPath = await window.electronAPI.getAppPath();
+            } catch (e) { console.error("Error getting app path:", e); }
+        }
+        
+        try {
+            bookmarks = await window.electronAPI.loadBookmarks();
+        } catch (e) { console.error("Error loading bookmarks:", e); bookmarks = []; }
+        
+        // Migrazione segnalibri (Aggiunge type e previene errori)
+        bookmarks = (bookmarks || []).map(b => {
+            if (!b.type) b.type = 'bookmark';
+            if (b.type === 'folder' && !b.children) b.children = [];
+            return b;
+        });
 
-    history = await window.electronAPI.loadHistory();
-    
-    // Applica impostazioni iniziali
-    applySettings();
-    
-    // Event listeners
-    setupEventListeners();
-    
-    // Crea pagine all'avvio
-    if (config.startupUrls && config.startupUrls.length > 0) {
-        config.startupUrls.forEach(url => createTab(url));
-    } else {
-        createTab('home.html');
+        try {
+            history = await window.electronAPI.loadHistory();
+        } catch (e) { console.error("Error loading history:", e); history = []; }
+        
+        // Applica impostazioni iniziali
+        applySettings();
+        
+        // Event listeners
+        setupEventListeners();
+        
+        // Crea pagine all'avvio
+        if (config.startupUrls && config.startupUrls.length > 0) {
+            config.startupUrls.forEach(url => createTab(url));
+        } else {
+            createTab('home.html');
+        }
+        
+        // Aggiorna UI
+        renderBookmarks();
+        renderFavoritesBar();
+        renderHistory();
+        updateSettingsUI();
+        console.log("Initialization Complete");
+
+        // Listener ridimensionamento per Tauri
+        if (isTauri) {
+            window.addEventListener('resize', () => {
+                if (activeTabId) syncTauriWebview(activeTabId);
+            });
+        }
+    } catch (criticalErr) {
+        console.error("CRITICAL ERROR DURING INIT:", criticalErr);
+        // Fallback estremo: crea almeno una tab di emergenza se gli elementi base esistono
+        try {
+            if (!tabs || tabs.length === 0) createTab('home.html');
+        } catch (e) {}
     }
-    
-    // Aggiorna UI
-    renderBookmarks();
-    renderFavoritesBar();
-    renderHistory();
-    updateSettingsUI();
 }
 
 function setupEventListeners() {
@@ -318,16 +346,14 @@ function createTab(url = 'home.html') {
     const tabId = Date.now().toString();
     const webviewId = `webview-${tabId}`;
     
-    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web/Tauri)
+    // Gestione contenuto: Iframe per home locale, Webview Nativo per il web
     let webview;
     if (isElectron) {
         webview = document.createElement('webview');
         webview.setAttribute('allowpopups', '');
-        // User Agent COMPLETAMENTE standard (Chrome 121 per bypass Google)
         const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
         webview.setAttribute('useragent', userAgent);
         webview.setAttribute('partition', 'persist:cosmonet_session');
-        // Abilitiamo Javascript e aggiungiamo lo script di stealth (Bypass Google)
         webview.setAttribute('webpreferences', 'contextIsolation=yes, nodeIntegration=no, webSecurity=yes, javascript=yes, sandbox=no');
         
         if (appPath) {
@@ -337,33 +363,52 @@ function createTab(url = 'home.html') {
         webview.id = webviewId;
         webview.src = url;
     } else {
-        // Fallback per Tauri, Android e Web
-        webview = document.createElement('iframe');
-        webview.style.border = 'none';
-        webview.style.width = '100%';
-        webview.style.height = '100%';
-        webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
-        webview.setAttribute('allow', 'camera; microphone; geolocation');
-        webview.id = webviewId;
-        webview.src = url;
+        // Tauri / Mobile
+        const isExternal = url.startsWith('http');
+        
+        if (isExternal && isTauri) {
+            // Placeholder invisibile per Tauri, il vero webview viene creato nel backend
+            webview = document.createElement('div');
+            webview.className = 'webview-placeholder';
+            webview.id = webviewId;
+            
+            // Creiamo il webview nativo via bridge
+            // Ritardiamo leggermente per assicurarci che il DOM sia pronto per il passaggio delle coordinate
+            setTimeout(() => {
+                const rect = webview.getBoundingClientRect();
+                window.electronAPI.createWebView(webviewId, url, rect.left, rect.top, rect.width, rect.height);
+            }, 50);
+        } else {
+            // Iframe per home.html o se non siamo in Tauri
+            webview = document.createElement('iframe');
+            webview.style.border = 'none';
+            webview.style.width = '100%';
+            webview.style.height = '100%';
+            webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+            webview.setAttribute('allow', 'camera; microphone; geolocation');
+            webview.id = webviewId;
+            webview.src = url;
+        }
 
-        // Mock metodi electron per iframe
-        webview.reload = () => { webview.src = webview.src; };
-        webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
-        webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
-        webview.getURL = () => webview.src;
-        webview.getTitle = () => "Pagina";
-        webview.setUserAgent = () => {};
-        webview.canGoBack = () => true;
-        webview.canGoForward = () => true;
-        webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
+        // Mock metodi comuni
+        webview.reload = () => { 
+            if (isExternal && isTauri) window.electronAPI.reloadWebView(webviewId);
+            else webview.src = webview.src; 
+        };
+        webview.goBack = () => { 
+            if (isExternal && isTauri) window.electronAPI.goBack(webviewId);
+            else try { webview.contentWindow.history.back(); } catch(e) {} 
+        };
+        webview.goForward = () => { 
+            if (isExternal && isTauri) window.electronAPI.goForward(webviewId);
+            else try { webview.contentWindow.history.forward(); } catch(e) {} 
+        };
     }
     
     // Event listeners comuni o specifici
     if (isElectron) {
         webview.addEventListener('did-start-loading', () => {
             updateTabLoading(tabId, true);
-            // Forza User-Agent a ogni caricamento per bypassare il rilevamento webview
             const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
             webview.setUserAgent(ua);
         });
@@ -381,79 +426,23 @@ function createTab(url = 'home.html') {
             updateNavigationButtons();
         });
     } else {
-        // Fallback per iframe (Android)
-        webview.addEventListener('load', () => {
-            updateTabLoading(tabId, false);
-            updateNavigationButtons();
-            checkLoginForm(webview);
-            try {
-                // Prova a leggere l'URL reale (funziona se stesso dominio)
-                const currentUrl = webview.contentWindow.location.href;
-                if (currentUrl && currentUrl !== 'about:blank') {
-                    updateUrlBar(currentUrl);
-                    const tab = tabs.find(t => t.id === tabId);
-                    if (tab) tab.url = currentUrl;
-                }
-            } catch (e) {
-                // Cross-origin: la barra rimane all'ultimo URL impostato manualmente
-                console.log("Navigazione esterna (Google/etc): URL protetto");
-            }
-            updateTabTitle(tabId, "Pagina caricata"); 
-        });
+        // Fallback per iframe / Tauri
+        if (webview.tagName === 'IFRAME') {
+            webview.addEventListener('load', () => {
+                updateTabLoading(tabId, false);
+                updateNavigationButtons();
+                checkLoginForm(webview);
+                updateTabTitle(tabId, "Home"); 
+            });
+        }
     }
-
-    webview.addEventListener('did-fail-load', (e) => {
-        console.error('Fallimento caricamento:', e);
-        if (e.errorCode !== -3) { // Escludi annullamenti manuali
-            webview.executeJavaScript(`
-                document.body.innerHTML = \`
-                    <div style="font-family: sans-serif; text-align: center; padding-top: 50px; color: #374151;">
-                        <h1 style="font-size: 48px; margin-bottom: 10px;">😕 Ops!</h1>
-                        <p style="font-size: 18px;">Impossibile caricare la pagina: <b>${e.validatedURL}</b></p>
-                        <p style="color: #6b7280;">Errore: ${e.errorDescription} (${e.errorCode})</p>
-                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">Riprova</button>
-                    </div>
-                \`;
-            `);
-        }
-    });
-    
-    webview.addEventListener('page-title-updated', (e) => {
-        updateTabTitle(tabId, e.title);
-    });
-    
-    webview.addEventListener('page-favicon-updated', (e) => {
-        if (e.favicons && e.favicons.length > 0) {
-            updateTabFavicon(tabId, e.favicons[0]);
-        }
-    });
-
-    webview.addEventListener('context-menu', (e) => {
-        // Opzionale: potresti implementare un menu personalizzato qui
-        // Per ora lasciamo che Electron gestisca il default se configurato
-    });
-    
-    webview.addEventListener('did-navigate', (e) => {
-        updateUrlBar(e.url);
-        addToHistory(e.url, webview.getTitle());
-        updateNavigationButtons();
-    });
-    
-    webview.addEventListener('did-navigate-in-page', (e) => {
-        updateUrlBar(e.url);
-        updateNavigationButtons();
-    });
-    
-    webview.addEventListener('new-window', (e) => {
-        createTab(e.url);
-    });
     
     webviewsContainer.appendChild(webview);
     
     // Crea tab UI
     const tab = {
         id: tabId,
-        title: 'Nuova Tab',
+        title: url === 'home.html' ? 'Home' : 'Nuova Tab',
         url: url,
         favicon: null,
         webview: webview
@@ -462,6 +451,24 @@ function createTab(url = 'home.html') {
     tabs.push(tab);
     renderTab(tab);
     switchToTab(tabId);
+}
+
+// Funzione per aggiornare la posizione del webview nativo Tauri quando ridimensioniamo o cambiamo tab
+function syncTauriWebview(tabId) {
+    if (!isTauri) return;
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && tab.webview.classList.contains('webview-placeholder')) {
+        const rect = tab.webview.getBoundingClientRect();
+        window.electronAPI.updateWebViewBounds(tab.webview.id, rect.left, rect.top, rect.width, rect.height);
+        window.electronAPI.setWebViewVisibility(tab.webview.id, true);
+    }
+    
+    // Nascondi gli altri
+    tabs.forEach(t => {
+        if (t.id !== tabId && t.webview.classList.contains('webview-placeholder')) {
+            window.electronAPI.setWebViewVisibility(t.webview.id, false);
+        }
+    });
 }
 
 function renderTab(tab) {
@@ -541,6 +548,9 @@ function switchToTab(tabId) {
         updateUrlBar(currentUrl);
         updateNavigationButtons();
         updateBookmarkButton();
+        
+        // Sincronizza posizioni webview Tauri
+        if (isTauri) syncTauriWebview(tabId);
     }
 }
 
@@ -549,6 +559,11 @@ function closeTab(tabId) {
     if (tabIndex === -1) return;
     
     const tab = tabs[tabIndex];
+    if (isTauri && tab.webview.classList.contains('webview-placeholder')) {
+        // Opzionale: implementare comando destroy_webview se necessario
+        // Per ora lo rendiamo invisibile
+        window.electronAPI.setWebViewVisibility(tab.webview.id, false);
+    }
     tab.webview.remove();
     document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
     

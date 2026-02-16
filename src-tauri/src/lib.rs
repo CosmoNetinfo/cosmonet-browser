@@ -34,8 +34,50 @@ async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
 
 #[command]
 async fn save_settings<R: Runtime>(app: AppHandle<R>, settings: Value) -> Result<(), String> {
-    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("settings.json");
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("settings.json");
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
+#[command]
+async fn load_history<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("history.json");
+    if path.exists() {
+        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&content).map_err(|e| e.to_string())
+    } else {
+        Ok(json!([]))
+    }
+}
+
+#[command]
+async fn save_history<R: Runtime>(app: AppHandle<R>, history: Value) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("history.json");
+    let content = serde_json::to_string_pretty(&history).map_err(|e| e.to_string())?;
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
+#[command]
+async fn load_passwords<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("passwords.json");
+    if path.exists() {
+        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&content).map_err(|e| e.to_string())
+    } else {
+        Ok(json!([]))
+    }
+}
+
+#[command]
+async fn save_passwords<R: Runtime>(app: AppHandle<R>, passwords: Value) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("passwords.json");
+    let content = serde_json::to_string_pretty(&passwords).map_err(|e| e.to_string())?;
     fs::write(path, content).map_err(|e| e.to_string())
 }
 
@@ -44,62 +86,114 @@ async fn get_app_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     app.path().app_data_dir().map(|p| p.to_string_lossy().to_string()).map_err(|e| e.to_string())
 }
 
-// Simplified webview management - tabs are handled in the frontend using iframes
+// Native webview management using WebviewWindowExt (requires unstable feature)
+use tauri::WebviewWindowExt;
+
 #[command]
 async fn create_webview<R: Runtime>(
-    _app: AppHandle<R>, 
-    _id: String, 
-    _url: String, 
-    _x: f64, 
-    _y: f64, 
-    _width: f64, 
-    _height: f64
+    app: AppHandle<R>, 
+    id: String, 
+    url: String, 
+    x: f64, 
+    y: f64, 
+    width: f64, 
+    height: f64
 ) -> Result<(), String> {
+    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    
+    // Se esiste già, lo aggiorniamo e basta
+    if let Some(wv) = app.get_webview(&id) {
+        wv.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: x as i32, y: y as i32 })).map_err(|e| e.to_string())?;
+        wv.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: width as u32, height: height as u32 })).map_err(|e| e.to_string())?;
+        wv.show().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let url_parsed = if url.starts_with("http") {
+        tauri::WebviewUrl::External(url.parse().map_err(|e| e.to_string())?)
+    } else {
+        tauri::WebviewUrl::App(std::path::PathBuf::from(url))
+    };
+
+    let webview_builder = tauri::webview::WebviewBuilder::new(&id, url_parsed)
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
+
+    let _wv = window.add_child(
+        webview_builder,
+        tauri::Position::Physical(tauri::PhysicalPosition { x: x as i32, y: y as i32 }),
+        tauri::Size::Physical(tauri::PhysicalSize { width: width as u32, height: height as u32 })
+    ).map_err(|e: tauri::Error| e.to_string())?;
+    
     Ok(())
 }
 
 #[command]
 async fn update_webview_bounds<R: Runtime>(
-    _app: AppHandle<R>, 
-    _id: String, 
-    _x: f64, 
-    _y: f64, 
-    _width: f64, 
-    _height: f64
+    app: AppHandle<R>, 
+    id: String, 
+    x: f64, 
+    y: f64, 
+    width: f64, 
+    height: f64
 ) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        wv.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: x as i32, y: y as i32 })).map_err(|e| e.to_string())?;
+        wv.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: width as u32, height: height as u32 })).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
 #[command]
 async fn set_webview_visibility<R: Runtime>(
-    _app: AppHandle<R>, 
-    _id: String, 
-    _visible: bool
+    app: AppHandle<R>, 
+    id: String, 
+    visible: bool
 ) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        if visible {
+            wv.show().map_err(|e| e.to_string())?;
+            wv.set_focus().map_err(|e| e.to_string())?;
+        } else {
+            wv.hide().map_err(|e| e.to_string())?;
+        }
+    }
     Ok(())
 }
 
 #[command]
 async fn navigate_webview<R: Runtime>(
-    _app: AppHandle<R>, 
-    _id: String, 
-    _url: String
+    app: AppHandle<R>, 
+    id: String, 
+    url: String
 ) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        let url_parsed = url.parse::<tauri::Url>().map_err(|e| e.to_string())?;
+        wv.navigate(url_parsed).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
 #[command]
-async fn webview_go_back<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
+async fn webview_go_back<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        let _ = wv.eval("window.history.back()");
+    }
     Ok(())
 }
 
 #[command]
-async fn webview_go_forward<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
+async fn webview_go_forward<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        let _ = wv.eval("window.history.forward()");
+    }
     Ok(())
 }
 
 #[command]
-async fn webview_reload<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
+async fn webview_reload<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&id) {
+        let _ = wv.eval("window.location.reload()");
+    }
     Ok(())
 }
 
@@ -115,6 +209,10 @@ pub fn run() {
             save_bookmarks,
             load_settings,
             save_settings,
+            load_history,
+            save_history,
+            load_passwords,
+            save_passwords,
             get_app_path,
             create_webview,
             update_webview_bounds,
