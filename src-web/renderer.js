@@ -1356,8 +1356,11 @@ async function fetchCosmoFeed() {
     cosmoFeedList.innerHTML = '<div class="feed-loading">Aggiornamento in corso...</div>';
     
     try {
-        const response = await fetch('https://www.cosmonet.info/feed/');
-        const text = await response.text();
+        // Usa il bridge Tauri/Rust per bypassare CORS
+        const text = await window.electronAPI.fetchFeed();
+        
+        if (!text) throw new Error("Feed vuoto o non raggiungibile");
+
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, 'text/xml');
         const items = xml.querySelectorAll('item');
@@ -1375,12 +1378,12 @@ async function fetchCosmoFeed() {
             if (imgMatch) thumbnail = imgMatch[1];
 
             return { title, link, pubDate, creator, content, thumbnail };
-        });
+        }).slice(0, 20); // Limita a 20 articoli
         
         renderCosmoFeed();
     } catch (e) {
         console.error('Errore caricamento feed:', e);
-        cosmoFeedList.innerHTML = '<div class="feed-loading">Errore nel caricamento del feed. Verifica la connessione.</div>';
+        cosmoFeedList.innerHTML = '<div class="feed-loading">Errore nel caricamento del feed.<br>Verifica la connessione o riprova più tardi.</div>';
     }
 }
 

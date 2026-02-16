@@ -10,6 +10,7 @@
     "shell:allow-open",
     "fs:default",
     "core:path:default",
+    "http:default",
     "dialog:default"
   ]
 }

@@ -147,10 +147,27 @@ async fn webview_reload<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(
     Ok(())
 }
 
+#[command]
+async fn fetch_rss() -> Result<String, String> {
+    let url = "https://www.cosmonet.info/feed/";
+    let client = reqwest::Client::builder()
+        .user_agent("CosmonetBrowser/1.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+        
+    let response = client.get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+        
+    response.text().await.map_err(|e| e.to_string())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new()
             .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout))
@@ -163,7 +180,8 @@ pub fn run() {
             get_app_path, create_webview,
             update_webview_bounds, set_webview_visibility,
             navigate_webview, webview_go_back,
-            webview_go_forward, webview_reload
+            webview_go_forward, webview_reload,
+            fetch_rss
         ])
         .setup(|_app| {
             // Qui andrà la logica del menu di sistema se necessaria

@@ -23,6 +23,7 @@
                 saveSettings: (settings) => invoke('save_settings', { settings }).catch(e => console.error(e)),
                 loadPasswords: () => invoke('load_passwords').catch(e => { console.error(e); return []; }),
                 savePasswords: (passwords) => invoke('save_passwords', { passwords }).catch(e => console.error(e)),
+                fetchFeed: () => invoke('fetch_rss').catch(e => { console.error(e); return ''; }),
                 getAppPath: () => invoke('get_app_path').catch(e => { console.error(e); return ""; }),
                 
                 // Webview Management for Browser Tabs
