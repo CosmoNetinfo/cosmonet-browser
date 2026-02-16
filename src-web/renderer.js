@@ -1,133 +1,14 @@
-const isTauri = typeof window.__TAURI__ !== 'undefined';
-const isElectron = !isTauri && typeof window.electronAPI !== 'undefined' && window.electronAPI.onNewTab !== undefined;
+// ========== Cosmonet Browser Renderer ==========
+console.log("📄 renderer.js initialized");
+
+// Variabili ambiente (var per evitare conflitti di ridichiarazione)
+var isTauri = typeof window.__TAURI__ !== 'undefined';
+var isElectron = !isTauri && typeof window.electronAPI !== 'undefined' && window.electronAPI.onNewTab !== undefined;
 
 function pathJoin(part1, part2) {
     if (!part1) return part2;
     const sep = part1.includes('\\') || part2.includes('\\') ? '\\' : '/';
     return part1.endsWith(sep) ? part1 + part2 : part1 + sep + part2;
-}
-
-// Bridge Tauri -> Chiama funzioni Rust backend
-if (isTauri) {
-    const { invoke } = window.__TAURI__.core;
-    const { listen } = window.__TAURI__.event;
-    
-    window.electronAPI = {
-        loadSettings: async () => {
-            try {
-                const result = await invoke('load_settings');
-                return result;
-            } catch(e) { 
-                console.warn('Tauri load_settings fallback to localStorage:', e);
-                return JSON.parse(localStorage.getItem('cosmo_settings') || 'null');
-            }
-        },
-        saveSettings: async (settings) => {
-            try {
-                await invoke('save_settings', { settings });
-            } catch(e) {
-                console.warn('Tauri save_settings fallback to localStorage:', e);
-                localStorage.setItem('cosmo_settings', JSON.stringify(settings));
-            }
-        },
-        loadBookmarks: async () => {
-            try {
-                const result = await invoke('load_bookmarks');
-                return result || [];
-            } catch(e) { 
-                console.warn('Tauri load_bookmarks fallback to localStorage:', e);
-                return JSON.parse(localStorage.getItem('cosmo_bookmarks') || '[]');
-            }
-        },
-        saveBookmarks: async (bookmarks) => {
-            try {
-                await invoke('save_bookmarks', { bookmarks });
-            } catch(e) {
-                console.warn('Tauri save_bookmarks fallback to localStorage:', e);
-                localStorage.setItem('cosmo_bookmarks', JSON.stringify(bookmarks));
-            }
-        },
-        loadHistory: async () => {
-            try {
-                const result = await invoke('load_history');
-                return result || [];
-            } catch(e) { 
-                console.warn('Tauri load_history fallback to localStorage:', e);
-                return JSON.parse(localStorage.getItem('cosmo_history') || '[]');
-            }
-        },
-        saveHistory: async (history) => {
-            try {
-                await invoke('save_history', { history });
-            } catch(e) {
-                console.warn('Tauri save_history fallback to localStorage:', e);
-                localStorage.setItem('cosmo_history', JSON.stringify(history));
-            }
-        },
-        loadPasswords: async () => {
-            try {
-                const result = await invoke('load_passwords');
-                return result || [];
-            } catch(e) { 
-                console.warn('Tauri load_passwords fallback to localStorage:', e);
-                return JSON.parse(localStorage.getItem('cosmo_passwords') || '[]');
-            }
-        },
-        savePasswords: async (passwords) => {
-            try {
-                await invoke('save_passwords', { passwords });
-            } catch(e) {
-                console.warn('Tauri save_passwords fallback to localStorage:', e);
-                localStorage.setItem('cosmo_passwords', JSON.stringify(passwords));
-            }
-        },
-        getAppPath: async () => {
-            try {
-                return await invoke('get_app_path');
-            } catch(e) {
-                console.warn('Tauri get_app_path error:', e);
-                return '';
-            }
-        },
-        onNewTab: (cb) => { listen('new-tab', cb); },
-        onCloseTab: (cb) => { listen('close-tab', cb); },
-        onReloadTab: (cb) => { listen('reload-tab', cb); },
-        onNavigateTo: (cb) => { listen('navigate-to', (event) => cb(event.payload)); }
-    };
-}
-// Mock per ambienti non-Electron/non-Tauri (Android/Capacitor/Web)
-else if (!isElectron && !isTauri) {
-    window.electronAPI = {
-        loadSettings: async () => {
-            try {
-                return JSON.parse(localStorage.getItem('cosmo_settings') || 'null');
-            } catch(e) { return null; }
-        },
-        saveSettings: async (settings) => localStorage.setItem('cosmo_settings', JSON.stringify(settings)),
-        loadBookmarks: async () => {
-            try {
-                return JSON.parse(localStorage.getItem('cosmo_bookmarks') || '[]');
-            } catch(e) { return []; }
-        },
-        saveBookmarks: async (bookmarks) => localStorage.setItem('cosmo_bookmarks', JSON.stringify(bookmarks)),
-        loadHistory: async () => {
-            try {
-                return JSON.parse(localStorage.getItem('cosmo_history') || '[]');
-            } catch(e) { return []; }
-        },
-        saveHistory: async (history) => localStorage.setItem('cosmo_history', JSON.stringify(history)),
-        loadPasswords: async () => {
-            try {
-                return JSON.parse(localStorage.getItem('cosmo_passwords') || '[]');
-            } catch(e) { return []; }
-        },
-        savePasswords: async (passwords) => localStorage.setItem('cosmo_passwords', JSON.stringify(passwords)),
-        getAppPath: async () => '',
-        onNewTab: (cb) => {},
-        onCloseTab: (cb) => {},
-        onReloadTab: (cb) => {},
-        onNavigateTo: (cb) => {}
-    };
 }
 
 // Configurazione di default
@@ -196,28 +77,34 @@ function initializeElements() {
 
 // Inizializzazione
 async function init() {
-    console.log("Starting Browser Initialization...");
     try {
         initializeElements();
         
-        let savedSettings = null;
+        // Carica impostazioni
         try {
-            savedSettings = await window.electronAPI.loadSettings();
-        } catch (e) { console.error("Error loading settings:", e); }
-        
-        if (savedSettings) {
-            config = { ...config, ...savedSettings };
+            const savedSettings = await window.electronAPI.loadSettings();
+            if (savedSettings) {
+                config = { ...config, ...savedSettings };
+            }
+        } catch (e) { 
+            console.warn('Error loading settings:', e);
         }
         
         if (isElectron) {
             try {
                 appPath = await window.electronAPI.getAppPath();
-            } catch (e) { console.error("Error getting app path:", e); }
+            } catch (e) { 
+                console.warn('Error getting app path:', e);
+            }
         }
         
+        // Carica dati
         try {
             bookmarks = await window.electronAPI.loadBookmarks();
-        } catch (e) { console.error("Error loading bookmarks:", e); bookmarks = []; }
+        } catch (e) { 
+            console.warn('Error loading bookmarks:', e);
+            bookmarks = []; 
+        }
         
         // Migrazione segnalibri (Aggiunge type e previene errori)
         bookmarks = (bookmarks || []).map(b => {
@@ -228,7 +115,10 @@ async function init() {
 
         try {
             history = await window.electronAPI.loadHistory();
-        } catch (e) { console.error("Error loading history:", e); history = []; }
+        } catch (e) { 
+            console.warn('Error loading history:', e);
+            history = []; 
+        }
         
         // Applica impostazioni iniziali
         applySettings();
@@ -238,7 +128,7 @@ async function init() {
         
         // Crea pagine all'avvio
         if (config.startupUrls && config.startupUrls.length > 0) {
-            config.startupUrls.forEach(url => createTab(url));
+            config.startupUrls.forEach(url => createTab(url || 'home.html'));
         } else {
             createTab('home.html');
         }
@@ -248,25 +138,18 @@ async function init() {
         renderFavoritesBar();
         renderHistory();
         updateSettingsUI();
-        console.log("Initialization Complete");
-
+        
         // Listener ridimensionamento per Tauri
         if (isTauri) {
             window.addEventListener('resize', () => {
                 if (activeTabId) syncTauriWebview(activeTabId);
             });
         }
+        
+        console.log("✅ Initialization Complete!");
     } catch (criticalErr) {
-        console.error("CRITICAL ERROR DURING INIT:", criticalErr);
-        // Fallback estremo: mostra almeno qualcosa se possibile
-        const container = document.getElementById('webviews-container');
-        if (container) {
-            container.innerHTML = `<div style="color:white; padding:20px;">
-                <h2>Errore di Inizializzazione</h2>
-                <p>${criticalErr.message}</p>
-                <button onclick="location.reload()">Riprova</button>
-            </div>`;
-        }
+        console.error("CRITICAL INITIALIZATION ERROR:", criticalErr);
+        alert("Errore critico durante l'inizializzazione: " + criticalErr.message);
     }
 }
 
@@ -1703,4 +1586,11 @@ function checkLoginForm(webview) {
 }
 
 // Avvia applicazione
-init();
+console.log("🎬 Calling init() directly (no DOMContentLoaded)...");
+try {
+    init();
+    console.log("✅ init() call completed");
+} catch (e) {
+    console.error("❌ FATAL: init() threw an error:", e);
+    alert("FATAL ERROR: " + e.message);
+}
