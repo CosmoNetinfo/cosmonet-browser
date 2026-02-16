@@ -19,7 +19,8 @@
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
-        "devtools": true
+        "devtools": true,
+        "additionalBrowserArgs": "--disable-web-security --disable-features=IsolateOrigins,site-per-process --disable-site-isolation-trials"
       }
     ],
     "security": {

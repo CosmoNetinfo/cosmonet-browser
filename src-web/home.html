@@ -138,34 +138,32 @@
                 <span>ChatGPT</span>
             </div>
         </div>
-    </div>
-
+    <style>
+        .news-section { display: none; } /* Fallback se rimanesse qualcosa */
+    </style>
     <script>
         document.getElementById('search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const query = e.target.value.trim();
-                if (query) {
-                    // Comunica al renderer.js di navigare
-                    // Possiamo usare window.parent.postMessage se in iframe
-                    // O semplicemente cambiare location se siamo nello stesso dominio del browser shell
-                    // In questo caso, essendo un file locale caricato in webview, 
-                    // navigheremo semplicemente qui.
-                    
-                    let url = query;
-                    if (!url.match(/^https?:\/\//)) {
-                        if (url.includes('.') && !url.includes(' ')) {
-                            url = 'https://' + url;
-                        } else {
-                            url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
-                        }
-                    }
-                    window.location.href = url;
+            if (e.key === 'Enter') handleSearch(e.target.value);
+        });
+
+        function handleSearch(query) {
+            query = query.trim();
+            if (!query) return;
+            
+            let url = query;
+            if (!url.match(/^https?:\/\//)) {
+                if (url.includes('.') && !url.includes(' ')) {
+                    url = 'https://' + url;
+                } else {
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
                 }
             }
-        });
+            window.location.href = url; // Naviga nell'iframe corrente
+        }
 
         function navigate(url) {
             window.location.href = url;
+            // Se volessimo aprire in nuova tab, useremmo: window.parent.createNewTab(url)
         }
     </script>
 </body>

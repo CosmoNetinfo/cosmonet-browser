@@ -175,8 +175,10 @@ function createWebviewInstance(id, url, isFullSize = true, x = 0, y = 0, width =
     }
 
     // Sandbox e permessi
-    webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
-    webview.setAttribute('allow', 'camera; microphone; geolocation');
+    // Rimuoviamo sandbox per permettere navigazione completa come un browser
+    webview.removeAttribute('sandbox'); 
+    webview.allow = 'camera; microphone; geolocation; fullscreen; payment';
+    webview.referrerPolicy = 'no-referrer';
 
     // Mock metodi per compatibilità con il codice Electron
     webview.reload = () => { webview.src = webview.src; };
