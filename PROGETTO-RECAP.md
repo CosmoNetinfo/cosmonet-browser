@@ -62,11 +62,25 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 
 ### 📦 Deliverables
 
-- ✅ Codice sorgente Tauri completo in `src-tauri/`
-- ✅ Bridge JavaScript per compatibilità (`tauri-bridge.js`)
-- ✅ Documentazione tecnica (`tauri-migration.md`, `STUDIO-GOOGLE-LOGIN.md`)
-- ✅ README aggiornato con badge Tauri e istruzioni di sviluppo
-- ✅ **Push su GitHub completato** (commit `4f7f7f6`)
+- ✅ Codice sorgente Tauri completo in `src-tauri/` e frontend in `src-web/`.
+- ✅ Bridge JavaScript per compatibilità (`src-web/tauri-bridge.js`).
+- ✅ Documentazione tecnica (`tauri-migration.md`, `STUDIO-GOOGLE-LOGIN.md`).
+- ✅ README aggiornato con badge Tauri e istruzioni di sviluppo.
+- ✅ **Push su GitHub completato** (commit `602ceeb`).
+- ✅ **GitHub Actions Configurato**: Build automatica dell'eseguibile Windows nel cloud.
+- ✅ **Visual Studio Build Tools Installato**: Ambiente locale pronto (richiede riavvio).
+
+### 🛑 Prossimi Passi (Dopo Riavvio PC)
+
+1. **Riavvia il PC** per completare la configurazione di Visual Studio.
+2. Apri il terminale nella cartella del progetto.
+3. Esegui il comando di build:
+   ```bash
+   npm run tauri:build
+   ```
+4. Troverai l'eseguibile portatile (`.exe`) in `src-tauri/target/release/bundle/nsis/`.
+
+*Nota: Se la build locale dovesse dare problemi, GitHub Actions avrà già compilato l'app per te nella sezione "Actions" del repository.*
 
 ---
 
