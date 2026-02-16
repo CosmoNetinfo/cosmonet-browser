@@ -346,7 +346,7 @@ function createTab(url = 'home.html') {
     const tabId = Date.now().toString();
     const webviewId = `webview-${tabId}`;
     
-    // Gestione contenuto: Iframe per home locale, Webview Nativo per il web
+    // Gestione contenuto: Iframe per Tauri/Web/Mobile, Webview per Electron
     let webview;
     if (isElectron) {
         webview = document.createElement('webview');
@@ -363,49 +363,27 @@ function createTab(url = 'home.html') {
         webview.id = webviewId;
         webview.src = url;
     } else {
-        // Tauri / Mobile
-        const isExternal = url.startsWith('http');
-        
-        if (isExternal && isTauri) {
-            // Placeholder invisibile per Tauri, il vero webview viene creato nel backend
-            webview = document.createElement('div');
-            webview.className = 'webview-placeholder';
-            webview.id = webviewId;
-            
-            // Creiamo il webview nativo via bridge
-            // Ritardiamo leggermente per assicurarci che il DOM sia pronto per il passaggio delle coordinate
-            setTimeout(() => {
-                const rect = webview.getBoundingClientRect();
-                window.electronAPI.createWebView(webviewId, url, rect.left, rect.top, rect.width, rect.height);
-            }, 50);
-        } else {
-            // Iframe per home.html o se non siamo in Tauri
-            webview = document.createElement('iframe');
-            webview.style.border = 'none';
-            webview.style.width = '100%';
-            webview.style.height = '100%';
-            webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
-            webview.setAttribute('allow', 'camera; microphone; geolocation');
-            webview.id = webviewId;
-            webview.src = url;
-        }
+        // Tauri / Web / Mobile - Usiamo iframe per ora per massima stabilità
+        webview = document.createElement('iframe');
+        webview.style.border = 'none';
+        webview.style.width = '100%';
+        webview.style.height = '100%';
+        webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+        webview.setAttribute('allow', 'camera; microphone; geolocation');
+        webview.id = webviewId;
+        webview.src = url;
 
-        // Mock metodi comuni
-        webview.reload = () => { 
-            if (isExternal && isTauri) window.electronAPI.reloadWebView(webviewId);
-            else webview.src = webview.src; 
-        };
-        webview.goBack = () => { 
-            if (isExternal && isTauri) window.electronAPI.goBack(webviewId);
-            else try { webview.contentWindow.history.back(); } catch(e) {} 
-        };
-        webview.goForward = () => { 
-            if (isExternal && isTauri) window.electronAPI.goForward(webviewId);
-            else try { webview.contentWindow.history.forward(); } catch(e) {} 
-        };
+        // Mock metodi comuni per evitare reference errors
+        webview.reload = () => { webview.src = webview.src; };
+        webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
+        webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
+        webview.getURL = () => webview.src;
+        webview.getTitle = () => "Pagina";
+        webview.setUserAgent = () => {};
+        webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
     }
     
-    // Event listeners comuni o specifici
+    // Event listeners comuni
     if (isElectron) {
         webview.addEventListener('did-start-loading', () => {
             updateTabLoading(tabId, true);
@@ -426,15 +404,13 @@ function createTab(url = 'home.html') {
             updateNavigationButtons();
         });
     } else {
-        // Fallback per iframe / Tauri
-        if (webview.tagName === 'IFRAME') {
-            webview.addEventListener('load', () => {
-                updateTabLoading(tabId, false);
-                updateNavigationButtons();
-                checkLoginForm(webview);
-                updateTabTitle(tabId, "Home"); 
-            });
-        }
+        // Fallback per iframe (Android/Tauri)
+        webview.addEventListener('load', () => {
+            updateTabLoading(tabId, false);
+            updateNavigationButtons();
+            checkLoginForm(webview);
+            updateTabTitle(tabId, url === 'home.html' ? 'Home' : 'Pagina'); 
+        });
     }
     
     webviewsContainer.appendChild(webview);
@@ -453,22 +429,9 @@ function createTab(url = 'home.html') {
     switchToTab(tabId);
 }
 
-// Funzione per aggiornare la posizione del webview nativo Tauri quando ridimensioniamo o cambiamo tab
+// Sincronizzazione per Tauri (stub)
 function syncTauriWebview(tabId) {
-    if (!isTauri) return;
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab && tab.webview.classList.contains('webview-placeholder')) {
-        const rect = tab.webview.getBoundingClientRect();
-        window.electronAPI.updateWebViewBounds(tab.webview.id, rect.left, rect.top, rect.width, rect.height);
-        window.electronAPI.setWebViewVisibility(tab.webview.id, true);
-    }
-    
-    // Nascondi gli altri
-    tabs.forEach(t => {
-        if (t.id !== tabId && t.webview.classList.contains('webview-placeholder')) {
-            window.electronAPI.setWebViewVisibility(t.webview.id, false);
-        }
-    });
+    // Non necessario in modalità iframe
 }
 
 function renderTab(tab) {
