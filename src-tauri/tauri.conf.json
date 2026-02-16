@@ -37,9 +37,8 @@
     ]
   },
   "plugins": {
-    "shell": { "active": true },
-    "fs": { "active": true },
-    "path": { "active": true },
-    "dialog": { "active": true }
+    "shell": {
+      "open": true
+    }
   }
 }
