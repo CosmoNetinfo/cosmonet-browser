@@ -318,37 +318,9 @@ function createTab(url = 'home.html') {
     const tabId = Date.now().toString();
     const webviewId = `webview-${tabId}`;
     
-    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web, Proxy per Tauri)
+    // Crea l'elemento per il contenuto (webview per Electron, iframe per Android/Web/Tauri)
     let webview;
-    if (isTauri) {
-        const rect = webviewsContainer.getBoundingClientRect();
-        window.electronAPI.createWebView(webviewId, url, rect.left, rect.top, rect.width, rect.height);
-        
-        // Mock per Tauri che emula i metodi del webview di Electron
-        webview = {
-            id: webviewId,
-            src: url,
-            classList: {
-                add: (c) => { if(c === 'active') window.electronAPI.setWebViewVisibility(webviewId, true); },
-                remove: (c) => { if(c === 'active') window.electronAPI.setWebViewVisibility(webviewId, false); },
-                contains: (c) => false
-            },
-            style: {},
-            remove: () => { /* Gestito nella chiusura */ },
-            reload: () => window.electronAPI.reloadWebView(webviewId),
-            goBack: () => window.electronAPI.goBack(webviewId),
-            goForward: () => window.electronAPI.goForward(webviewId),
-            canGoBack: () => true,
-            canGoForward: () => true,
-            getURL: () => url,
-            getTitle: () => 'Tauri Page',
-            setUserAgent: () => {},
-            executeJavaScript: () => {},
-            addEventListener: (name, cb) => {
-                // Eventi base simulati o agganciati tramite bridge
-            }
-        };
-    } else if (isElectron) {
+    if (isElectron) {
         webview = document.createElement('webview');
         webview.setAttribute('allowpopups', '');
         // User Agent COMPLETAMENTE standard (Chrome 121 per bypass Google)
@@ -365,6 +337,7 @@ function createTab(url = 'home.html') {
         webview.id = webviewId;
         webview.src = url;
     } else {
+        // Fallback per Tauri, Android e Web
         webview = document.createElement('iframe');
         webview.style.border = 'none';
         webview.style.width = '100%';
@@ -373,6 +346,17 @@ function createTab(url = 'home.html') {
         webview.setAttribute('allow', 'camera; microphone; geolocation');
         webview.id = webviewId;
         webview.src = url;
+
+        // Mock metodi electron per iframe
+        webview.reload = () => { webview.src = webview.src; };
+        webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
+        webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
+        webview.getURL = () => webview.src;
+        webview.getTitle = () => "Pagina";
+        webview.setUserAgent = () => {};
+        webview.canGoBack = () => true;
+        webview.canGoForward = () => true;
+        webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
     }
     
     // Event listeners comuni o specifici

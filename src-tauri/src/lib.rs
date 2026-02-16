@@ -44,8 +44,7 @@ async fn get_app_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     app.path().app_data_dir().map(|p| p.to_string_lossy().to_string()).map_err(|e| e.to_string())
 }
 
-// Simplified webview management - tabs are handled in the frontend
-// These commands are kept for compatibility but do minimal work
+// Simplified webview management - tabs are handled in the frontend using iframes
 #[command]
 async fn create_webview<R: Runtime>(
     _app: AppHandle<R>, 
@@ -56,7 +55,6 @@ async fn create_webview<R: Runtime>(
     _width: f64, 
     _height: f64
 ) -> Result<(), String> {
-    // In Tauri 2.0, we use a single webview with frontend tab management
     Ok(())
 }
 
