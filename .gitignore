@@ -5,6 +5,9 @@ node_modules/
 dist/
 build/
 android/
+src-tauri/target/
+.env
+tmp/
 
 # Capacitor
 capacitor.config.json
