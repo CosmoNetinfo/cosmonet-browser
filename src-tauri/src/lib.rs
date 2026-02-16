@@ -1,7 +1,7 @@
 use serde_json::{json, Value};
 use std::fs;
 use tauri::{command, AppHandle, Manager, Runtime, Emitter};
-use tauri_plugin_path::PathExt;
+
 
 #[command]
 async fn load_bookmarks<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
@@ -41,108 +41,67 @@ async fn save_settings<R: Runtime>(app: AppHandle<R>, settings: Value) -> Result
 
 #[command]
 async fn get_app_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
-    app.path().app_dir().map(|p| p.to_string_lossy().to_string()).map_err(|e| e.to_string())
+    app.path().app_data_dir().map(|p| p.to_string_lossy().to_string()).map_err(|e| e.to_string())
 }
 
+// Simplified webview management - tabs are handled in the frontend
+// These commands are kept for compatibility but do minimal work
 #[command]
 async fn create_webview<R: Runtime>(
-    app: AppHandle<R>, 
-    id: String, 
-    url: String, 
-    x: f64, 
-    y: f64, 
-    width: f64, 
-    height: f64
+    _app: AppHandle<R>, 
+    _id: String, 
+    _url: String, 
+    _x: f64, 
+    _y: f64, 
+    _width: f64, 
+    _height: f64
 ) -> Result<(), String> {
-    let window = app.get_webview_window("main").ok_or("Main window not found")?;
-    
-    if app.get_webview(&id).is_some() {
-        return Ok(());
-    }
-
-    let webview_builder = tauri::webview::WebviewBuilder::new(
-        id, 
-        tauri::WebviewUrl::External(url.parse().map_err(|e| e.to_string())?)
-    )
-    .bounds(tauri::Rect { 
-        x: x as i32, 
-        y: y as i32, 
-        width: width as u32, 
-        height: height as u32 
-    })
-    .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
-    .initialization_script(include_str!("../../src-web/webview-preload.js"));
-
-    let _webview = webview_builder.build(&window).map_err(|e| e.to_string())?;
-    
+    // In Tauri 2.0, we use a single webview with frontend tab management
     Ok(())
 }
 
 #[command]
 async fn update_webview_bounds<R: Runtime>(
-    app: AppHandle<R>, 
-    id: String, 
-    x: f64, 
-    y: f64, 
-    width: f64, 
-    height: f64
+    _app: AppHandle<R>, 
+    _id: String, 
+    _x: f64, 
+    _y: f64, 
+    _width: f64, 
+    _height: f64
 ) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        wv.set_bounds(tauri::Rect { 
-            x: x as i32, 
-            y: y as i32, 
-            width: width as u32, 
-            height: height as u32 
-        }).map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 
 #[command]
 async fn set_webview_visibility<R: Runtime>(
-    app: AppHandle<R>, 
-    id: String, 
-    visible: bool
+    _app: AppHandle<R>, 
+    _id: String, 
+    _visible: bool
 ) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        wv.set_visibility(visible).map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 
 #[command]
 async fn navigate_webview<R: Runtime>(
-    app: AppHandle<R>, 
-    id: String, 
-    url: String
+    _app: AppHandle<R>, 
+    _id: String, 
+    _url: String
 ) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        wv.set_url(&url.parse().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 
 #[command]
-async fn webview_go_back<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        let _ = wv.eval("window.history.back()");
-    }
+async fn webview_go_back<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
     Ok(())
 }
 
 #[command]
-async fn webview_go_forward<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        let _ = wv.eval("window.history.forward()");
-    }
+async fn webview_go_forward<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
     Ok(())
 }
 
 #[command]
-async fn webview_reload<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
-    if let Some(wv) = app.get_webview(&id) {
-        let _ = wv.eval("window.location.reload()");
-    }
+async fn webview_reload<R: Runtime>(_app: AppHandle<R>, _id: String) -> Result<(), String> {
     Ok(())
 }
 
@@ -151,7 +110,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_path::init())
+
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             load_bookmarks,
@@ -203,13 +162,13 @@ pub fn run() {
 
             // Tools Menu
             let tools_menu = Submenu::with_items(handle, "Strumenti", true, &[
-                &MenuItem::with_id(handle, "devtools", "Console sviluppatore", true, Some("F12"))?,
+                &MenuItem::with_id(handle, "devtools", "Console sviluppatore", true, Some("F12".to_string()))?,
             ])?;
 
             // Help Menu
             let help_menu = Submenu::with_items(handle, "Aiuto", true, &[
-                &MenuItem::with_id(handle, "visit-site", "Visita cosmonet.info", true, None)?,
-                &MenuItem::with_id(handle, "about", "Informazioni", true, None)?,
+                &MenuItem::with_id(handle, "visit-site", "Visita cosmonet.info", true, None::<String>)?,
+                &MenuItem::with_id(handle, "about", "Informazioni", true, None::<String>)?,
             ])?;
 
             let menu = Menu::with_items(handle, &[

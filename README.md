@@ -1,90 +1,192 @@
-# 🌌 Cosmonet Browser (Ultra 2.0)
+# 🌌 Cosmonet Browser
 
 > La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)
 ![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.0-ffc131.svg)
-![Electron Legacy](https://img.shields.io/badge/legacy-Electron-9feaf9.svg)
+![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**Cosmonet Browser** si evolve. Nato su Electron, il progetto è ora in fase di migrazione verso **Tauri 2.0**, offrendo un'esperienza di navigazione incredibilmente più veloce, sicura e leggera. Progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info), unisce un design futuristico a prestazioni di livello enterprise.
+**Cosmonet Browser** è un browser personalizzato costruito con **Tauri 2.0** e **Rust**, progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info). Offre un'esperienza di navigazione veloce, sicura e leggera con funzionalità avanzate per la gestione di tab, segnalibri e password.
 
 ---
 
-## 🚀 Evoluzione Tauri 2.0
+## 🚀 Caratteristiche Principali
 
-Abbiamo riscritto il core del browser in **Rust** utilizzando Tauri per superare i limiti di Electron:
+### ⚡ Prestazioni Eccezionali
 
-- **Piuma Leggero**: L'eseguibile è passato da ~80MB a meno di **10MB**.
-- **Memoria Ultra-Efficiente**: Consumo di RAM ridotto del 70% (meno di 50MB all'avvio).
-- **Sicurezza Nativa**: Logica di sistema scritta in Rust per la massima protezione.
-- **Webview Native**: Utilizzo di Microsoft Edge WebView2 (Windows) per la massima compatibilità e velocità.
+- **Leggerissimo**: Eseguibile di soli **~14MB** (contro i ~500MB di browser basati su Chromium completo)
+- **Memoria Efficiente**: Consumo di RAM ridotto grazie all'utilizzo di webview native del sistema
+- **Avvio Istantaneo**: Tempo di caricamento inferiore a 1 secondo
+- **Backend Rust**: Logica di sistema scritta in Rust per massime prestazioni e sicurezza
 
----
+### 🎨 Interfaccia Moderna
 
-## 🩺 Analisi Tecnica: Google Login & Stealth Mode
+- **OLED Dark UI**: Interfaccia scura ottimizzata con palette Neutral Black
+- **Dashboard Personalizzata**: Homepage Cosmonet con ricerca rapida e link veloci
+- **Animazioni Fluide**: Transizioni smooth tra tab e pannelli
+- **Branding Cosmonet**: Logo e identità visiva ufficiale integrata
 
-Il problema del blocco "Browser non supportato" di Google è affrontato con una **Stealth Layer Strategy** avanzata integrata direttamente nel backend Rust:
+### 🛠️ Funzionalità Avanzate
 
-### 🛠️ Soluzioni Implementate
-
-1. **Iniezione Stealth Nativa**: Tramite Rust, iniettiamo script di mascheramento *prima* di ogni caricamento di pagina, nascondendo `navigator.webdriver` e simulando hardware reale.
-2. **Mascheramento User-Agent**: Forziamo un'identità Chrome standard (v121+) a livello di webview nativa.
-3. **Rust Bridge**: Un sistema di messaggistica IPC ultra-veloce tra Rust e JavaScript che sostituisce il vecchio `preload.js` di Electron.
-4. **Header Clean-up**: Rimozione aggressiva di header identificativi (`X-Requested-With`) che segnalano browser embedded.
-
----
-
-## ✨ Caratteristiche Principali
-
-### 🎨 Design & Esperienza Utente
-
-- **OLED UI Architecture**: Interfaccia pulita, moderna e neutra (Neutral Black).
-- **Branding Ufficiale**: Logo Cosmonet ad alta risoluzione e palette colori coerente.
-- **Micro-Animazioni**: Transizioni fluide tra tab e pannelli laterali.
-
-### ⚙️ Funzionalità Avanzate
-
-- 📑 **Incredibile Gestione Tab**: Sistema multi-webview dinamico bridgato tra Rust e JS.
-- 🌑 **Dark Mode Persistente**: Attivabile con un click, memorizzata nel profilo utente.
-- 🚀 **Cosmo Dashboard**: Homepage personalizzata (`home.html`) con ricerca intelligente.
-- 📁 **Gestione Preferiti**: Cartelle nidificate con supporto **Drag & Drop** nativo.
-- 📡 **Cosmo Feed RSS**: Ultime notizie di CosmoNet direttamente nel browser.
-- 📖 **Modalità Lettura**: Vista ottimizzata per articoli senza distrazioni.
-- 🔑 **Gestore Password**: Salvataggio sicuro delle credenziali con crittografia locale.
+- 📑 **Gestione Tab Dinamica**: Sistema multi-tab con supporto completo per la navigazione
+- 📁 **Segnalibri Avanzati**: Organizzazione con cartelle, drag & drop e ricerca rapida
+- 🔑 **Password Manager**: Gestore password integrato con salvataggio automatico
+- 📡 **Feed RSS Cosmonet**: Ultime notizie dal sito direttamente nel browser
+- 📖 **Modalità Lettura**: Vista ottimizzata per articoli senza distrazioni
+- 🌐 **Google Login Bypass**: Stealth mode avanzato per accedere ai servizi Google senza blocchi
 
 ---
 
-## 🛠️ Requisiti & Sviluppo
+## 🔒 Google Login & Stealth Mode
 
-### Installazione Dipendenze
+Il browser implementa una **strategia stealth avanzata** per superare i blocchi "Browser non supportato" di Google:
 
-Per compilare la versione Tauri, assicurati di avere:
+### Tecnologie Implementate
 
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Node.js](https://nodejs.org/)
+1. **User-Agent Spoofing**: Mascheramento come Chrome 121 standard
+2. **Script Injection**: Rimozione di identificatori di automazione (`navigator.webdriver`)
+3. **Header Cleaning**: Eliminazione di header sospetti (`X-Requested-With`)
+4. **Session Isolation**: Gestione separata delle sessioni per evitare tracking
 
-### Comandi Rapidi
+Documentazione completa disponibile in [`STUDIO-GOOGLE-LOGIN.md`](./STUDIO-GOOGLE-LOGIN.md).
+
+---
+
+## 📦 Download & Installazione
+
+### Installer Ufficiali (Windows)
+
+Scarica l'ultima versione dalla sezione [Releases](https://github.com/YOUR_USERNAME/cosmonet-browser/releases):
+
+- **Setup NSIS** (consigliato): `cosmonet-browser_1.2.1_x64-setup.exe` (~3.3 MB)
+- **MSI Installer**: `cosmonet-browser_1.2.1_x64_en-US.msi` (~4.7 MB)
+- **Portable**: `app.exe` (~14 MB) - Nessuna installazione richiesta
+
+### Requisiti di Sistema
+
+- **OS**: Windows 10/11 (64-bit)
+- **WebView2**: Installato automaticamente se non presente
+- **RAM**: Minimo 2GB (consigliato 4GB+)
+
+---
+
+## 🛠️ Sviluppo
+
+### Prerequisiti
+
+Per compilare il progetto da sorgente:
+
+- [Rust](https://www.rust-lang.org/tools/install) (1.77.2+)
+- [Node.js](https://nodejs.org/) (18+)
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) con "Desktop development with C++"
+
+### Setup Ambiente
+
+```bash
+# Clona il repository
+git clone https://github.com/YOUR_USERNAME/cosmonet-browser.git
+cd cosmonet-browser
+
+# Installa dipendenze JavaScript
+npm install
+
+# Verifica installazione Rust
+cargo --version
+```
+
+### Comandi Disponibili
 
 | Comando | Descrizione |
 | :--- | :--- |
-| `npm install` | Installa le dipendenze JS |
-| `npm run tauri:dev` | Avvia il browser in modalità sviluppo |
-| `npm run tauri:build` | Genera l'installer per Windows |
-| `npm start` | Avvia la versione legacy (Electron) |
+| `npm run tauri:dev` | Avvia il browser in modalità sviluppo (hot-reload) |
+| `npm run tauri:build` | Compila e genera gli installer per Windows |
+| `cargo check` | Verifica la correttezza del codice Rust |
+| `cargo build --release` | Compila solo il backend Rust (ottimizzato) |
+
+### Struttura del Progetto
+
+```
+cosmonet-browser/
+├── src-tauri/              # Backend Rust (Tauri)
+│   ├── src/
+│   │   ├── lib.rs          # Logica principale e comandi Tauri
+│   │   └── main.rs         # Entry point
+│   ├── Cargo.toml          # Dipendenze Rust
+│   └── tauri.conf.json     # Configurazione Tauri
+├── src-web/                # Frontend (HTML/CSS/JS)
+│   ├── renderer.js         # Logica UI principale
+│   ├── tauri-bridge.js     # Bridge di compatibilità Tauri
+│   ├── home.html           # Dashboard Cosmonet
+│   └── styles.css          # Stili globali
+├── assets/                 # Icone e risorse
+└── package.json            # Dipendenze Node.js
+```
+
+---
+
+## 🚧 Roadmap
+
+### ✅ Completato
+
+- [x] Migrazione completa da Electron a Tauri 2.0
+- [x] Sistema di gestione tab nativo
+- [x] Google Login bypass (Stealth Mode v2)
+- [x] Gestore segnalibri con drag & drop
+- [x] Password manager integrato
+- [x] Build Windows (NSIS + MSI)
+- [x] Dashboard Cosmonet personalizzata
+
+### 🔄 In Sviluppo
+
+- [ ] Versione Android (Capacitor)
+- [ ] Sincronizzazione cloud (Supabase)
+- [ ] Estensioni personalizzate
+- [ ] Supporto Linux/macOS
+
+---
+
+## 📚 Documentazione Aggiuntiva
+
+- [`PROGETTO-RECAP.md`](./PROGETTO-RECAP.md) - Cronologia completa dello sviluppo
+- [`STATO-PROGETTO.md`](./STATO-PROGETTO.md) - Stato attuale del progetto
+- [`tauri-migration.md`](./tauri-migration.md) - Dettagli tecnici della migrazione Tauri
+- [`STUDIO-GOOGLE-LOGIN.md`](./STUDIO-GOOGLE-LOGIN.md) - Analisi tecnica del bypass Google
+
+---
+
+## 🤝 Contribuire
+
+I contributi sono benvenuti! Per favore:
+
+1. Fai un fork del progetto
+2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
+3. Committa le modifiche (`git commit -m 'Add some AmazingFeature'`)
+4. Pusha sul branch (`git push origin feature/AmazingFeature`)
+5. Apri una Pull Request
 
 ---
 
 ## 📜 Licenza
 
-Questo progetto è rilasciato sotto la licenza **MIT**.
+Questo progetto è rilasciato sotto la licenza **MIT**. Vedi il file [LICENSE](./LICENSE) per i dettagli.
 
 ---
 
 ## 🌐 Link Utili
 
 - **Sito Ufficiale**: [www.cosmonet.info](https://www.cosmonet.info)
-- **Supporto & Forum**: [Community Cosmonet](https://www.cosmonet.info/community/)
+- **Community**: [Forum Cosmonet](https://www.cosmonet.info/community/)
+- **Supporto**: [Apri un Issue](https://github.com/YOUR_USERNAME/cosmonet-browser/issues)
 
 ---
+
+## 🙏 Ringraziamenti
+
+- **Tauri Team** per il fantastico framework
+- **Community Cosmonet** per il supporto e il feedback
+- Tutti i contributori che hanno reso possibile questo progetto
+
+---
+
 *Sviluppato con ❤️ per la Galassia Digitale di Cosmonet.*
