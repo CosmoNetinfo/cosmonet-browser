@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 use std::fs;
-use tauri::{command, AppHandle, Manager, Runtime};
+use tauri::{command, AppHandle, Manager, Runtime, Emitter};
 use tauri_plugin_path::PathExt;
 
 #[command]
@@ -71,7 +71,7 @@ async fn create_webview<R: Runtime>(
         height: height as u32 
     })
     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
-    .initialization_script(include_str!("../../webview-preload.js"));
+    .initialization_script(include_str!("../../src-web/webview-preload.js"));
 
     let _webview = webview_builder.build(&window).map_err(|e| e.to_string())?;
     
