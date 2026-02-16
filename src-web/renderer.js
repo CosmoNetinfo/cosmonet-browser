@@ -7,8 +7,96 @@ function pathJoin(part1, part2) {
     return part1.endsWith(sep) ? part1 + part2 : part1 + sep + part2;
 }
 
+// Bridge Tauri -> Chiama funzioni Rust backend
+if (isTauri) {
+    const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
+    
+    window.electronAPI = {
+        loadSettings: async () => {
+            try {
+                const result = await invoke('load_settings');
+                return result;
+            } catch(e) { 
+                console.warn('Tauri load_settings fallback to localStorage:', e);
+                return JSON.parse(localStorage.getItem('cosmo_settings') || 'null');
+            }
+        },
+        saveSettings: async (settings) => {
+            try {
+                await invoke('save_settings', { settings });
+            } catch(e) {
+                console.warn('Tauri save_settings fallback to localStorage:', e);
+                localStorage.setItem('cosmo_settings', JSON.stringify(settings));
+            }
+        },
+        loadBookmarks: async () => {
+            try {
+                const result = await invoke('load_bookmarks');
+                return result || [];
+            } catch(e) { 
+                console.warn('Tauri load_bookmarks fallback to localStorage:', e);
+                return JSON.parse(localStorage.getItem('cosmo_bookmarks') || '[]');
+            }
+        },
+        saveBookmarks: async (bookmarks) => {
+            try {
+                await invoke('save_bookmarks', { bookmarks });
+            } catch(e) {
+                console.warn('Tauri save_bookmarks fallback to localStorage:', e);
+                localStorage.setItem('cosmo_bookmarks', JSON.stringify(bookmarks));
+            }
+        },
+        loadHistory: async () => {
+            try {
+                const result = await invoke('load_history');
+                return result || [];
+            } catch(e) { 
+                console.warn('Tauri load_history fallback to localStorage:', e);
+                return JSON.parse(localStorage.getItem('cosmo_history') || '[]');
+            }
+        },
+        saveHistory: async (history) => {
+            try {
+                await invoke('save_history', { history });
+            } catch(e) {
+                console.warn('Tauri save_history fallback to localStorage:', e);
+                localStorage.setItem('cosmo_history', JSON.stringify(history));
+            }
+        },
+        loadPasswords: async () => {
+            try {
+                const result = await invoke('load_passwords');
+                return result || [];
+            } catch(e) { 
+                console.warn('Tauri load_passwords fallback to localStorage:', e);
+                return JSON.parse(localStorage.getItem('cosmo_passwords') || '[]');
+            }
+        },
+        savePasswords: async (passwords) => {
+            try {
+                await invoke('save_passwords', { passwords });
+            } catch(e) {
+                console.warn('Tauri save_passwords fallback to localStorage:', e);
+                localStorage.setItem('cosmo_passwords', JSON.stringify(passwords));
+            }
+        },
+        getAppPath: async () => {
+            try {
+                return await invoke('get_app_path');
+            } catch(e) {
+                console.warn('Tauri get_app_path error:', e);
+                return '';
+            }
+        },
+        onNewTab: (cb) => { listen('new-tab', cb); },
+        onCloseTab: (cb) => { listen('close-tab', cb); },
+        onReloadTab: (cb) => { listen('reload-tab', cb); },
+        onNavigateTo: (cb) => { listen('navigate-to', (event) => cb(event.payload)); }
+    };
+}
 // Mock per ambienti non-Electron/non-Tauri (Android/Capacitor/Web)
-if (!isElectron && !isTauri) {
+else if (!isElectron && !isTauri) {
     window.electronAPI = {
         loadSettings: async () => {
             try {
@@ -28,6 +116,13 @@ if (!isElectron && !isTauri) {
             } catch(e) { return []; }
         },
         saveHistory: async (history) => localStorage.setItem('cosmo_history', JSON.stringify(history)),
+        loadPasswords: async () => {
+            try {
+                return JSON.parse(localStorage.getItem('cosmo_passwords') || '[]');
+            } catch(e) { return []; }
+        },
+        savePasswords: async (passwords) => localStorage.setItem('cosmo_passwords', JSON.stringify(passwords)),
+        getAppPath: async () => '',
         onNewTab: (cb) => {},
         onCloseTab: (cb) => {},
         onReloadTab: (cb) => {},
@@ -163,11 +258,54 @@ async function init() {
         }
     } catch (criticalErr) {
         console.error("CRITICAL ERROR DURING INIT:", criticalErr);
-        // Fallback estremo: crea almeno una tab di emergenza se gli elementi base esistono
-        try {
-            if (!tabs || tabs.length === 0) createTab('home.html');
-        } catch (e) {}
+        // Fallback estremo: mostra almeno qualcosa se possibile
+        const container = document.getElementById('webviews-container');
+        if (container) {
+            container.innerHTML = `<div style="color:white; padding:20px;">
+                <h2>Errore di Inizializzazione</h2>
+                <p>${criticalErr.message}</p>
+                <button onclick="location.reload()">Riprova</button>
+            </div>`;
+        }
     }
+}
+
+// Funzione per creare iframe/webview (Centralizzata)
+function createWebviewInstance(id, url, isFullSize = true, x = 0, y = 0, width = "100%", height = "100%") {
+    const webview = document.createElement('iframe');
+    webview.id = id;
+    webview.src = url;
+    
+    if (isFullSize) {
+        webview.style.border = 'none';
+        webview.style.width = '100%';
+        webview.style.height = '100%';
+    } else {
+        webview.style.cssText = `
+            position: absolute;
+            left: ${x}px;
+            top: ${y}px;
+            width: ${width}px;
+            height: ${height}px;
+            border: none;
+        `;
+    }
+
+    // Sandbox e permessi
+    webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+    webview.setAttribute('allow', 'camera; microphone; geolocation');
+
+    // Mock metodi per compatibilità con il codice Electron
+    webview.reload = () => { webview.src = webview.src; };
+    webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
+    webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
+    webview.getURL = () => webview.src;
+    webview.getTitle = () => "Pagina";
+    webview.setUserAgent = () => {};
+    webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
+    webview.openDevTools = () => console.log("DevTools non disponibili in iframe");
+
+    return webview;
 }
 
 function setupEventListeners() {
@@ -364,23 +502,7 @@ function createTab(url = 'home.html') {
         webview.src = url;
     } else {
         // Tauri / Web / Mobile - Usiamo iframe per ora per massima stabilità
-        webview = document.createElement('iframe');
-        webview.style.border = 'none';
-        webview.style.width = '100%';
-        webview.style.height = '100%';
-        webview.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
-        webview.setAttribute('allow', 'camera; microphone; geolocation');
-        webview.id = webviewId;
-        webview.src = url;
-
-        // Mock metodi comuni per evitare reference errors
-        webview.reload = () => { webview.src = webview.src; };
-        webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
-        webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
-        webview.getURL = () => webview.src;
-        webview.getTitle = () => "Pagina";
-        webview.setUserAgent = () => {};
-        webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
+        webview = createWebviewInstance(webviewId, url);
     }
     
     // Event listeners comuni
