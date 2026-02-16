@@ -4,7 +4,7 @@
   "version": "1.2.1",
   "identifier": "info.cosmonet.browser",
   "build": {
-    "frontendDist": "../"
+    "frontendDist": "../src-web"
   },
   "app": {
     "withGlobalTauri": true,

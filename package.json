@@ -2,7 +2,7 @@
   "name": "cosmonet-browser",
   "version": "1.2.1",
   "description": "Browser personalizzato per cosmonet.info",
-  "main": "main.js",
+  "main": "src-web/main.js",
   "scripts": {
     "start": "electron .",
     "tauri:dev": "tauri dev",
@@ -17,6 +17,7 @@
   "author": "Cosmonet.info",
   "license": "MIT",
   "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
