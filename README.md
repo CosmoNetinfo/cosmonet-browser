@@ -125,24 +125,42 @@ cosmonet-browser/
 
 ---
 
-## 🚧 Roadmap
+### 🚧 Roadmap & Stato Corrente
 
-### ✅ Completato
+#### 🔄 In Corso (Priorità Alta)
+- [ ] **Migrazione a Browser Nativo (Multi-Window)**:
+    - ✅ Backend Rust pronto (comandi `create_browser_window` implementati)
+    - ⏳ Frontend JS in aggiornamento (passaggio da `iframe` a `WebviewWindow`)
+    - 🎯 Obiettivo: Supporto completo a Google, YouTube e bypass `X-Frame-Options`
+- [ ] **Android Porting**: Versione mobile basata su Capacitor
 
-- [x] Migrazione completa da Electron a Tauri 2.0
-- [x] Sistema di gestione tab nativo
-- [x] Google Login bypass (Stealth Mode v2)
-- [x] Gestore segnalibri con drag & drop
-- [x] Password manager integrato
-- [x] Build Windows (NSIS + MSI)
+#### ✅ Completato
+- [x] Migrazione Core da Electron a Tauri 2.0
+- [x] Backend Rust performante
+- [x] Gestore segnalibri e password (locale)
+- [x] Build System (GitHub Actions)
 - [x] Dashboard Cosmonet personalizzata
 
-### 🔄 In Sviluppo
+---
 
-- [ ] Versione Android (Capacitor)
-- [ ] Sincronizzazione cloud (Supabase)
-- [ ] Estensioni personalizzate
-- [ ] Supporto Linux/macOS
+## � Checklist Operativa: Verso il Browser Funzionante
+
+Per completare la trasformazione in un "Vero Browser" funzionante con tutti i siti moderni:
+
+1.  **Backend (Fatto ✅)**:
+    - [x] Aggiunti comandi Rust per creare finestre native senza decorazioni.
+    - [x] Aggiunta dipendenza `tauri-plugin-webview`.
+
+2.  **Frontend (Da Fare 🚧)**:
+    - [ ] Aggiornare `src-web/renderer.js` per usare `invoke('create_browser_window')`.
+    - [ ] Implementare listener per ridimensionamento finestra (Sync Layout).
+    - [ ] Collegare barra indirizzi e pulsanti nav alla nuova finestra.
+
+3.  **Test (Da Fare 🧪)**:
+    - [ ] Verifica login Google (dovrebbe funzionare nativamente).
+    - [ ] Verifica riproduzione video YouTube.
+
+👉 **Vedi [NEXT_STEPS_BROWSER_NATIVO.md](./NEXT_STEPS_BROWSER_NATIVO.md) per istruzioni tecniche dettagliate.**
 
 ---
 
