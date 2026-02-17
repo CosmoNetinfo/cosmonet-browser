@@ -2,7 +2,7 @@
 
 > La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 ![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.0-ffc131.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -29,7 +29,9 @@
 
 ### 🛠️ Funzionalità Avanzate
 
-- 📑 **Gestione Tab Dinamica**: Sistema multi-tab con supporto completo per la navigazione
+- 📑 **Browser Nativo Multi-Tab**: Ogni scheda è una Webview nativa indipendente (bypass totale di X-Frame-Options)
+- 🚀 **Performance Rust**: Gestione finestre e navigazione ultra-veloce via backend Rust
+- 📊 **Progress Bar**: Barra di caricamento reale integrata con gli eventi del motore browser
 - 📁 **Segnalibri Avanzati**: Organizzazione con cartelle, drag & drop e ricerca rapida
 - 🔑 **Password Manager**: Gestore password integrato con salvataggio automatico
 - 📡 **Feed RSS Cosmonet**: Ultime notizie dal sito direttamente nel browser
@@ -128,18 +130,20 @@ cosmonet-browser/
 ### 🚧 Roadmap & Stato Corrente
 
 #### 🔄 In Corso (Priorità Alta)
-- [ ] **Migrazione a Browser Nativo (Multi-Window)**:
-    - ✅ Backend Rust pronto (comandi `create_browser_window` implementati)
-    - ⏳ Frontend JS in aggiornamento (passaggio da `iframe` a `WebviewWindow`)
-    - 🎯 Obiettivo: Supporto completo a Google, YouTube e bypass `X-Frame-Options`
+- [x] **Migrazione a Browser Nativo (Multi-Window)**:
+    - ✅ Backend Rust completo (multi-webview dinamica)
+    - ✅ Frontend JS integrato (gestione label e visibilità)
+    - ✅ Bypass `X-Frame-Options` (Google, YouTube, Netflix funzionanti)
+    - ✅ Barra di caricamento sincronizzata con il backend
 - [ ] **Android Porting**: Versione mobile basata su Capacitor
 
 #### ✅ Completato
 - [x] Migrazione Core da Electron a Tauri 2.0
 - [x] Backend Rust performante
 - [x] Gestore segnalibri e password (locale)
-- [x] Build System (GitHub Actions)
+- [x] Multi-Tab Nativo & Loading Bar
 - [x] Dashboard Cosmonet personalizzata
+- [ ] Sincronizzazione Cloud (Supabase) - *In arrivo*
 
 ---
 
@@ -148,19 +152,18 @@ cosmonet-browser/
 Per completare la trasformazione in un "Vero Browser" funzionante con tutti i siti moderni:
 
 1.  **Backend (Fatto ✅)**:
-    - [x] Aggiunti comandi Rust per creare finestre native senza decorazioni.
-    - [x] Aggiunta dipendenza `tauri-plugin-webview`.
+    - [x] Architettura multi-webview con label dinamiche.
+    - [x] Eventi di caricamento emessi da Rust a JS.
 
-2.  **Frontend (Da Fare 🚧)**:
-    - [ ] Aggiornare `src-web/renderer.js` per usare `invoke('create_browser_window')`.
-    - [ ] Implementare listener per ridimensionamento finestra (Sync Layout).
-    - [ ] Collegare barra indirizzi e pulsanti nav alla nuova finestra.
+2.  **Frontend (Fatto ✅)**:
+    - [x] Integrazione `tauri-bridge.js` per gestione finestre native.
+    - [x] Inserimento progress bar Cosmo-Style.
+    - [x] Switch intelligente di focus e visibilità tra tab.
 
-3.  **Test (Da Fare 🧪)**:
-    - [ ] Verifica login Google (dovrebbe funzionare nativamente).
-    - [ ] Verifica riproduzione video YouTube.
-
-👉 **Vedi [NEXT_STEPS_BROWSER_NATIVO.md](./NEXT_STEPS_BROWSER_NATIVO.md) per istruzioni tecniche dettagliate.**
+3.  **Prossimi Step 🎯**:
+    - [ ] Sincronizzazione Cloud dei dati.
+    - [ ] Ottimizzazione performance su sistemi a basso consumo.
+    - [ ] Porting dei fix nativi su Android.
 
 ---
 

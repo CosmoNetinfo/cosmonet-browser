@@ -4,6 +4,7 @@
   "version": "1.2.1",
   "identifier": "info.cosmonet.browser",
   "build": {
+    "beforeDevCommand": "",
     "frontendDist": "../src-web"
   },
   "app": {
@@ -19,8 +20,7 @@
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
-        "devtools": true,
-        "additionalBrowserArgs": "--disable-web-security --disable-features=IsolateOrigins,site-per-process --disable-site-isolation-trials"
+        "devtools": true
       }
     ],
     "security": {

@@ -29,17 +29,20 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 - **Fix v1.1.8 (Final Google & Home)**: Abilitato esplicitamente JavaScript nelle webpreferences e rimosso l'header `X-Requested-With` per superare definitivamente i blocchi Google. Ripristinato il logo dell'alieno nella pagina Home e risolto l'errore di overflow (barra che esce fuori) tramite `box-sizing: border-box`.
 - **Fix v1.2.0 (Stealth Mode & Aesthetic)**: Implementata Modalità Stealth tramite `webview-preload.js` per mascherare completamente l'ambiente Electron a Google. Aggiornato lo sfondo della Home con l'immagine professionale dell'alieno mascotte e impostato il colore antracite (#262626).
 - **Fix v1.2.1 (Ultimate Google Bypass)**: Forzata consistenza User-Agent (Chrome 121) a livello di sessione, webview e headers. Potenziato lo script di stealth per mascherare hardware e lingue, e rimosso header sospetti in modo più aggressivo per superare i blocchi OAuth di Google.
+- **Fix v1.3.0 (Native Multi-Tab & Progress Bar)**: Rivoluzionata l'architettura dei tab. Ogni scheda ora gestisce una sua finestra nativa Tauri (Bypass totale di X-Frame-Options). Implementata barra di caricamento professionale con feedback dal backend Rust. Risolto bug dello schermo bianco.
 
 ---
 
-## 🦀 Migrazione Tauri 2.0 (✅ COMPLETATA - 16 Febbraio 2026)
+## 🦀 Migrazione Tauri 2.0 (✅ COMPLETATA - 17 Febbraio 2026)
 
 ### 🚀 Obiettivi Raggiunti
 
 - **Core Rust**: Implementato il backend nativo per una gestione file e memoria superiore.
 - **Native Webview Hooks**: Implementata l'iniezione stealth in Rust per bypassare i blocchi Google in modo più affidabile.
 - **Tauri Bridge API**: Creata una libreria di compatibilità (`tauri-bridge.js`) per mantenere il frontend esistente funzionante su Tauri.
-- **Sistema multi-tab nativo**: Le schede ora utilizzano webview native di sistema gestite da Rust, migliorando drasticamente la velocità di rendering.
+- **Sistema multi-tab nativo REALE**: Ogni scheda ha una sua WebviewWindow indipendente gestita da Rust.
+- **Bypass X-Frame-Options**: Risolto il problema del caricamento di Google, YouTube e siti protetti.
+- **Caricamento Visuale**: Implementata progress bar dinamica con eventi emessi da Rust.
 - **Menu Nativo**: Implementato il menu di sistema di Windows via Rust.
 - **Package.json aggiornato**: Aggiunti script `tauri:dev` e `tauri:build` per lo sviluppo con Tauri 2.0.
 - **Documentazione completa**: README aggiornato con sezioni dedicate alla migrazione Tauri.
@@ -47,15 +50,15 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 ### ✅ Checklist Stato Progetto
 
 - [x] UI OLED Neutral Black (Ottimizzata)
-- [x] Gestione Tab Dinamica (Electron & Tauri)
+- [x] Gestione Tab Dinamica (Multi-Webview Nativa)
 - [x] Dashboard Cosmonet (`home.html`)
 - [x] Gestore Segnalibri con Drag & Drop
 - [x] Gestore Password sicuro
 - [x] Feed RSS Cosmonet integrato
-- [x] Modalità Lettura Articoli
+- [x] Loading Bar Professionale
 - [x] Google Login Stealth Mode (Bypass v2)
 - [x] Build Windows (Electron Stable)
-- [x] **Migrazione Tauri 2.0 (Core completato e pushato su GitHub)**
+- [x] **Migrazione Tauri 2.0 (Sistema Webview Nativo Funzionante)**
 - [ ] Build Windows (Tauri Release) - *Prossimo step*
 - [ ] Build Android (Capacitor Refinement)
 - [ ] Sincronizzazione Cloud (Supabase) - *Pianificato*

@@ -1,7 +1,7 @@
 # 📊 Stato del Progetto: Cosmonet Browser
 
-**Data:** 17 Febbraio 2026 - Ore 00:07
-**Versione:** 1.2.2 (Stable Dev)
+**Data:** 17 Febbraio 2026 - Ore 02:25
+**Versione:** 1.3.0 (Stable Dev - Native Multi-Tab)
 
 Questo documento fornisce una fotografia attuale dello stato di sviluppo del Cosmonet Browser.
 
@@ -10,12 +10,13 @@ Questo documento fornisce una fotografia attuale dello stato di sviluppo del Cos
 ## 🟢 Stato Attuale: FUNZIONANTE (Bug Schermo Bianco RISOLTO)
 
 **Problema Risolto**: Il bug critico che causava lo schermo bianco all'avvio è stato corretto.
-*   **Causa**: Conflitto di variabili globali (`isTauri`) ridichiarate tra `tauri-bridge.js` e `renderer.js` + codice duplicato.
-*   **Soluzione**: Rimozione codice duplicato in `renderer.js` e utilizzo var/check condizionali.
-*   **Stato**: ✅ L'app si avvia correttamente, mostra l'interfaccia e permette la navigazione.
+*   **Stato**: ✅ RISOLTO. L'app si avvia correttamente e gestisce più finestre native.
+
+**Problema Risolto (X-Frame-Options)**:
+*   **Stato**: ✅ RISOLTO. Grazie all'architettura multi-webview nativa, Google, YouTube e tutti i siti protetti si caricano perfettamente.
 
 **Nuovi Problemi Minori**:
-*   ⚠️ **Feed RSS**: Errore di caricamento (probabile blocco CORS/permessi Tauri). Da investigare prossimamente.
+*   ⚠️ **Sincronizzazione Titoli**: Il titolo del tab nel frontend non sempre si aggiorna in tempo reale col titolo della pagina nativa (da migliorare in Rust).
 
 ---
 
@@ -46,22 +47,19 @@ La versione mobile è funzionale ma richiede attenzione in fase di sviluppo.
 ---
 
 ## � Problemi Critici e Soluzioni in Corso
-### 1. Navigazione Google/YouTube (X-Frame-Options)
-- **Problema:** L'architettura attuale basata su `iframe` non permette la navigazione su siti come Google, YouTube o Netflix perché bloccano l'embedding tramite header `X-Frame-Options: SAMEORIGIN`.
-- **Soluzione Decisa:** Passaggio ad architettura **Browser Nativo (Multi-Window)**.
-  - Invece di un iframe HTML, ogni scheda sarà una **Webview Nativa (Child Window)** gestita da Rust.
-  - Questo approccio bypassa completamente le restrizioni di sicurezza e offre performance migliori.
-- **Stato Attuale:**
-  - ✅ **Backend Rust (`lib.rs`)**: Implementati comandi `create_browser_window`, `resize_browser_window`, `navigate_browser`.
-  - ❌ **Frontend (`renderer.js`)**: Deve ancora essere aggiornato per usare questi comandi invece di `document.createElement('iframe')`.
-  - 📄 **Dettagli Tecnici**: Vedere file `NEXT_STEPS_BROWSER_NATIVO.md` per le istruzioni esatte di implementazione.
+### 1. Sistema Multi-Tab Nativo (Bypass X-Frame-Options)
+- **Soluzione:** Passaggio ad architettura **Browser Nativo (Multi-Webview)**.
+- **Stato Attuale:** ✅ **COMPLETATO**.
+  - ✅ **Backend Rust (`lib.rs`)**: Gestione dinamica delle finestre tramite `label`. Listener per eventi di caricamento e navigazione.
+  - ✅ **Frontend (`renderer.js`)**: Integrazione completa. Ogni tab apre la sua finestra nativa.
+  - ✅ **Loading Bar**: Implementata una barra di progresso visuale che segue il caricamento reale della pagina.
+  - ✅ **Risultato**: Navigazione libera su QUALSIASI sito (Google, YouTube, ecc.) senza blocchi.
 
 ## 📝 Prossimi Passi (Immediati)
-1.  **Frontend Refactoring**: Aggiornare `src-web/renderer.js` per invocare i nuovi comandi Rust per la creazione delle tab.
-2.  **Layout Sync**: Implementare il listener in JS che comunica a Rust le dimensioni dell'area content (`#webviews-container`) per ridimensionare la finestra nativa.
-3.  **Test Navigazione**: Verificare che Google e YouTube si carichino correttamente nella nuova finestra nativa.
-4.  **Ripristino UI**: Riabilitare le funzionalità correlate (barra URL, titolo tab) collegandole agli eventi della nuova finestra.d Capacitor.
-5.  **Sincronizzazione Cloud**: Iniziare l'integrazione con Supabase per sincronizzare password e segnalibri.
+1.  **Sincronizzazione Cloud (Supabase)**: Iniziare l'integrazione per sincronizzare password e segnalibri tra dispositivi.
+2.  **Miglioramento Titoli Tab**: Implementare il recupero del titolo pagina via Rust per aggiornare l'UI del tab.
+3.  **Ottimizzazione Android**: Portare i fix della navigazione nativa anche sulla versione mobile.
+4.  **Verifica Feed RSS**: Risolvere i problemi CORS per il feed di CosmoNet.
 
 ---
 

@@ -34,6 +34,7 @@ let urlBar, backBtn, forwardBtn, reloadBtn, homeBtn, bookmarkBtn, newTabBtn, men
 let cosmoFeedBtn, cosmoFeedPanel, cosmoFeedList, refreshFeedBtn, readingModeOverlay, readingContent, closeReadingModeBtn, saveForLaterBtn;
 let passwordsBtnMenu, passwordsPanel, passwordsList;
 let settingHomeUrlPage, settingSearchEnginePage, settingDarkModePage, saveAllSettingsBtn, closeSettingsPageBtn;
+let loadingBarContainer, loadingBar;
 
 function initializeElements() {
     urlBar = document.getElementById('url-bar');
@@ -73,6 +74,8 @@ function initializeElements() {
     settingDarkModePage = document.getElementById('setting-dark-mode-page');
     saveAllSettingsBtn = document.getElementById('save-all-settings-btn');
     closeSettingsPageBtn = document.getElementById('close-settings-page-btn');
+    loadingBarContainer = document.getElementById('loading-bar-container');
+    loadingBar = document.getElementById('loading-bar');
 }
 
 // Inizializzazione
@@ -154,44 +157,117 @@ async function init() {
 }
 
 // Funzione per creare iframe/webview (Centralizzata)
-function createWebviewInstance(id, url, isFullSize = true, x = 0, y = 0, width = "100%", height = "100%") {
-    const webview = document.createElement('iframe');
-    webview.id = id;
-    webview.src = url;
+// Funzione per gestire la Browser View Nativa
+// Non restituisce un elemento DOM reale ma gestisce la comunicazione con Rust
+function createWebviewInstance(id, url) {
+    console.log(`Richiesta creazione Browser View per: ${url} (ID: ${id})`);
     
-    if (isFullSize) {
-        webview.style.border = 'none';
-        webview.style.width = '100%';
-        webview.style.height = '100%';
-    } else {
-        webview.style.cssText = `
-            position: absolute;
-            left: ${x}px;
-            top: ${y}px;
-            width: ${width}px;
-            height: ${height}px;
-            border: none;
-        `;
+    // Calcola layout iniziale
+    const container = document.getElementById('webviews-container');
+    const rect = container.getBoundingClientRect();
+    
+    // Invoca backend per creare la finestra nativa specifica (label = id)
+    if (isTauri && window.electronAPI && window.electronAPI.createWebView) {
+        window.electronAPI.createWebView(id, url, rect.y, rect.height)
+            .catch(err => console.error("Errore creazione browser window:", err));
+        
+        // Listener per caricamento
+        if (window.electronAPI.listen) {
+            window.electronAPI.listen(`browser-loading-${id}`, (event) => {
+                const { url, loading } = event.payload;
+                if (loading) {
+                    showLoadingBar();
+                    if (id === activeTabId) updateUrlBar(url);
+                    updateTabLoading(id, true);
+                }
+            });
+            window.electronAPI.listen(`browser-loaded-${id}`, (event) => {
+                hideLoadingBar();
+                updateTabLoading(id, false);
+                // Sincronizza titolo (approssimativo via Rust in futuro, per ora placeholder)
+                if (id === activeTabId) updateNavigationButtons();
+            });
+        }
+
+        // Aggiorna layout dopo un breve delay per assicurarci che la finestra esista
+        setTimeout(() => syncTauriWebview(id), 100);
     }
+    
+    const webviewElement = document.createElement('div');
+    webviewElement.id = `webview-placeholder-${id}`;
+    webviewElement.className = 'webview-placeholder';
+    webviewElement.style.display = 'none';
+    webviewsContainer.appendChild(webviewElement);
 
-    // Sandbox e permessi
-    // Rimuoviamo sandbox per permettere navigazione completa come un browser
-    webview.removeAttribute('sandbox'); 
-    webview.allow = 'camera; microphone; geolocation; fullscreen; payment';
-    webview.referrerPolicy = 'no-referrer';
-
-    // Mock metodi per compatibilità con il codice Electron
-    webview.reload = () => { webview.src = webview.src; };
-    webview.goBack = () => { try { webview.contentWindow.history.back(); } catch(e) {} };
-    webview.goForward = () => { try { webview.contentWindow.history.forward(); } catch(e) {} };
-    webview.getURL = () => webview.src;
-    webview.getTitle = () => "Pagina";
-    webview.setUserAgent = () => {};
-    webview.executeJavaScript = (code) => { try { webview.contentWindow.eval(code); } catch(e) {} };
-    webview.openDevTools = () => console.log("DevTools non disponibili in iframe");
-
-    return webview;
+    let currentUrl = url;
+    
+    return {
+        id: id,
+        classList: webviewElement.classList,
+        remove: () => webviewElement.remove(),
+        get src() { return currentUrl; },
+        set src(newUrl) {
+            currentUrl = newUrl;
+            if (isTauri) window.electronAPI.navigateWebView(id, newUrl);
+        },
+        reload: () => isTauri ? window.electronAPI.reloadWebView(id) : null,
+        goBack: () => isTauri ? window.electronAPI.goBack(id) : null,
+        goForward: () => isTauri ? window.electronAPI.goForward(id) : null,
+        getURL: () => currentUrl,
+        getTitle: () => "Browser Tab",
+        openDevTools: () => isTauri ? window.electronAPI.openDevTools(id) : null
+    };
 }
+
+function showLoadingBar() {
+    if (loadingBarContainer) {
+        loadingBarContainer.classList.add('active');
+        loadingBar.style.width = '30%';
+        setTimeout(() => { if (loadingBar.style.width === '30%') loadingBar.style.width = '60%'; }, 500);
+    }
+}
+
+function hideLoadingBar() {
+    if (loadingBarContainer) {
+        loadingBar.style.width = '100%';
+        setTimeout(() => {
+            loadingBarContainer.classList.remove('active');
+            loadingBar.style.width = '0%';
+        }, 300);
+    }
+}
+
+// Sincronizzazione Layout Finestra Nativa
+function updateBrowserLayout() {
+    if (!isTauri) return;
+    if (activeTabId) syncTauriWebview(activeTabId);
+}
+
+function syncTauriWebview(tabId) {
+    if (!isTauri) return;
+    
+    const container = document.getElementById('webviews-container');
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const winX = window.screenX;
+    const winY = window.screenY;
+    
+    const x = winX + rect.x;
+    const y = winY + rect.y;
+    const width = rect.width;
+    const height = rect.height;
+
+    if (window.electronAPI && window.electronAPI.resizeWebView) {
+        window.electronAPI.resizeWebView(tabId, x, y, width, height);
+    }
+}
+
+// Listener per movimento e ridimensionamento
+window.addEventListener('resize', updateBrowserLayout);
+window.addEventListener('move', updateBrowserLayout); // Evento move non è standard DOM, ma Tauri potrebbe emetterlo
+setInterval(updateBrowserLayout, 1000); // Polling di sicurezza per il layout
+
 
 function setupEventListeners() {
     // Navigazione URL
@@ -369,63 +445,19 @@ function createTab(url = 'home.html') {
     const tabId = Date.now().toString();
     const webviewId = `webview-${tabId}`;
     
-    // Gestione contenuto: Iframe per Tauri/Web/Mobile, Webview per Electron
-    let webview;
-    if (isElectron) {
-        webview = document.createElement('webview');
-        webview.setAttribute('allowpopups', '');
-        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
-        webview.setAttribute('useragent', userAgent);
-        webview.setAttribute('partition', 'persist:cosmonet_session');
-        webview.setAttribute('webpreferences', 'contextIsolation=yes, nodeIntegration=no, webSecurity=yes, javascript=yes, sandbox=no');
-        
-        if (appPath) {
-            const preloadPath = pathJoin(appPath, 'webview-preload.js');
-            webview.setAttribute('preload', preloadPath);
-        }
-        webview.id = webviewId;
-        webview.src = url;
-    } else {
-        // Tauri / Web / Mobile - Usiamo iframe per ora per massima stabilità
-        webview = createWebviewInstance(webviewId, url);
-    }
+    // Inseriamo un placeholder nel container se serve debuggare, altrimenti nulla
+    // La vera finestra è gestita da Rust.
     
-    // Event listeners comuni
-    if (isElectron) {
-        webview.addEventListener('did-start-loading', () => {
-            updateTabLoading(tabId, true);
-            const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
-            webview.setUserAgent(ua);
-        });
-        
-        webview.addEventListener('did-stop-loading', () => {
-            updateTabLoading(tabId, false);
-            updateTabInfo(tabId);
-            updateNavigationButtons();
-            checkLoginForm(webview);
-        });
-        webview.addEventListener('page-title-updated', (e) => updateTabTitle(tabId, e.title));
-        webview.addEventListener('did-navigate', (e) => {
-            updateUrlBar(e.url);
-            addToHistory(e.url, webview.getTitle());
-            updateNavigationButtons();
-        });
-    } else {
-        // Fallback per iframe (Android/Tauri)
-        webview.addEventListener('load', () => {
-            updateTabLoading(tabId, false);
-            updateNavigationButtons();
-            checkLoginForm(webview);
-            updateTabTitle(tabId, url === 'home.html' ? 'Home' : 'Pagina'); 
-        });
-    }
+    // Per Native Browser: Creiamo l'astrazione webview
+    const webview = createWebviewInstance(webviewId, url);
     
-    webviewsContainer.appendChild(webview);
+    // Non facciamo appendChild(webview) perché webview non è più un nodo DOM reale
+    // webviewsContainer.appendChild(webview); <--- RIMOSSO
     
     // Crea tab UI
     const tab = {
         id: tabId,
-        title: url === 'home.html' ? 'Home' : 'Nuova Tab',
+        title: url.includes('home') ? 'Home' : 'Caricamento...',
         url: url,
         favicon: null,
         webview: webview
@@ -433,13 +465,14 @@ function createTab(url = 'home.html') {
     
     tabs.push(tab);
     renderTab(tab);
+    
+    // Passa subito a questa tab (che attiva la navigazione Rust)
     switchToTab(tabId);
 }
 
+
 // Sincronizzazione per Tauri (stub)
-function syncTauriWebview(tabId) {
-    // Non necessario in modalità iframe
-}
+// Sincronizzazione per Tauri (Gestita sopra)
 
 function renderTab(tab) {
     const tabElement = document.createElement('div');
@@ -488,11 +521,13 @@ function renderTab(tab) {
 }
 
 function switchToTab(tabId) {
+    const oldTabId = activeTabId;
+    
     // Deseleziona tutte le tabs
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('webview, iframe').forEach(w => w.classList.remove('active'));
+    document.querySelectorAll('.webview-placeholder, webview, iframe').forEach(w => w.classList.remove('active'));
     
-    // Attiva tab selezionata
+    // Attiva tab selezionata nell'UI
     const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
     if (tabElement) {
         tabElement.classList.add('active');
@@ -503,24 +538,27 @@ function switchToTab(tabId) {
         tab.webview.classList.add('active');
         activeTabId = tabId;
         
-        // Gestione URL per la barra degli indirizzi
-        let currentUrl = '';
-        if (isElectron) {
-            try {
-                currentUrl = tab.webview.getURL();
-            } catch (e) {
-                currentUrl = tab.url;
+        // Gestione visibilità finestre native Tauri
+        if (isTauri && window.electronAPI && window.electronAPI.setWebViewVisibility) {
+            // Nascondi vecchia se diversa
+            if (oldTabId && oldTabId !== tabId) {
+                window.electronAPI.setWebViewVisibility(oldTabId, false);
             }
-        } else {
-            currentUrl = tab.url;
+            // Mostra nuova
+            window.electronAPI.setWebViewVisibility(tabId, true);
+            // Sincronizza posizione
+            syncTauriWebview(tabId);
+        }
+
+        // Gestione URL per la barra degli indirizzi
+        let currentUrl = tab.url;
+        if (isElectron) {
+            try { currentUrl = tab.webview.getURL(); } catch (e) {}
         }
         
         updateUrlBar(currentUrl);
         updateNavigationButtons();
         updateBookmarkButton();
-        
-        // Sincronizza posizioni webview Tauri
-        if (isTauri) syncTauriWebview(tabId);
     }
 }
 
@@ -529,10 +567,8 @@ function closeTab(tabId) {
     if (tabIndex === -1) return;
     
     const tab = tabs[tabIndex];
-    if (isTauri && tab.webview.classList.contains('webview-placeholder')) {
-        // Opzionale: implementare comando destroy_webview se necessario
-        // Per ora lo rendiamo invisibile
-        window.electronAPI.setWebViewVisibility(tab.webview.id, false);
+    if (isTauri && window.electronAPI && window.electronAPI.closeWebView) {
+        window.electronAPI.closeWebView(tab.id);
     }
     tab.webview.remove();
     document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();

@@ -15,6 +15,7 @@
             const { listen } = window.__TAURI__.event;
 
             window.electronAPI = {
+                invoke: invoke, // Espone invoke per chiamate dirette (es. create_browser_window)
                 loadBookmarks: () => invoke('load_bookmarks').catch(e => { console.error(e); return []; }),
                 saveBookmarks: (bookmarks) => invoke('save_bookmarks', { bookmarks }).catch(e => console.error(e)),
                 loadHistory: () => invoke('load_history').catch(e => { console.error(e); return []; }),
@@ -26,20 +27,25 @@
                 fetchFeed: () => invoke('fetch_rss').catch(e => { console.error(e); return ''; }),
                 getAppPath: () => invoke('get_app_path').catch(e => { console.error(e); return ""; }),
                 
-                // Webview Management for Browser Tabs
-                createWebView: (id, url, x, y, width, height) => invoke('create_webview', { id, url, x, y, width, height }).catch(e => console.error(e)),
-                updateWebViewBounds: (id, x, y, width, height) => invoke('update_webview_bounds', { id, x, y, width, height }).catch(e => console.error(e)),
-                setWebViewVisibility: (id, visible) => invoke('set_webview_visibility', { id, visible }).catch(e => console.error(e)),
-                navigateWebView: (id, url) => invoke('navigate_webview', { id, url }).catch(e => console.error(e)),
-                goBack: (id) => invoke('webview_go_back', { id }).catch(e => console.error(e)),
-                goForward: (id) => invoke('webview_go_forward', { id }).catch(e => console.error(e)),
-                reloadWebView: (id) => invoke('webview_reload', { id }).catch(e => console.error(e)),
+                // Webview Management for Browser Tabs (Nativa)
+                createWebView: (label, url, y_offset, height) => invoke('create_browser_window', { label, url, y_offset, height }).catch(e => console.error(e)),
+                resizeWebView: (label, x, y, width, height) => invoke('resize_browser_window', { label, x, y, width, height }).catch(e => console.error(e)),
+                setWebViewVisibility: (label, visible) => invoke('set_browser_visibility', { label, visible }).catch(e => console.error(e)),
+                navigateWebView: (label, url) => invoke('navigate_browser', { label, url }).catch(e => console.error(e)),
+                closeWebView: (label) => invoke('close_browser_window', { label }).catch(e => console.error(e)),
+                goBack: (label) => invoke('webview_go_back', { label }).catch(e => console.error(e)),
+                goForward: (label) => invoke('webview_go_forward', { label }).catch(e => console.error(e)),
+                reloadWebView: (label) => invoke('webview_reload', { label }).catch(e => console.error(e)),
+                openDevTools: (label) => invoke('open_browser_devtools', { label }).catch(e => console.error(e)),
                 
                 // Event listeners from backend
                 onNewTab: (callback) => listen('new-tab', (event) => callback(event.payload)).catch(e => console.error(e)),
                 onCloseTab: (callback) => listen('close-tab', (event) => callback(event.payload)).catch(e => console.error(e)),
                 onReloadTab: (callback) => listen('reload-tab', (event) => callback(event.payload)).catch(e => console.error(e)),
-                onNavigateTo: (callback) => listen('navigate-to', (event) => callback(event.payload)).catch(e => console.error(e))
+                onNavigateTo: (callback) => listen('navigate-to', (event) => callback(event.payload)).catch(e => console.error(e)),
+                
+                // Nuovi listener per loading bar
+                listen: listen // Espone listen per listener dinamici (es. browser-loading-ID)
             };
             console.log("Tauri Bridge Loaded Successfully");
         } catch (err) {

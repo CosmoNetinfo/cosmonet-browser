@@ -1,60 +1,45 @@
-# Stato Impianto: Transizione a Vero Browser Nativo
+# Stato Impianto: Transizione a Vero Browser Nativo (Diario Operativo)
 
 ## 🎯 Obiettivo
-Trasformare Cosmonet Browser da un'app ibrida basata su iframe (che non carica Google/YouTube) a un **Browser Nativo** basato su WebView2 Child Windows (che carica tutto).
+Trasformare Cosmonet Browser da app ibrida a **Browser Nativo Multi-Window** per supportare Google, YouTube e navigazione completa.
 
-## ✅ Cosa è stato fatto (Backend Rust)
-1.  Modificato `src-tauri/src/lib.rs` per includere nuovi comandi:
-    -   `create_browser_window(url, ...)`: Crea una finestra figlia nativa senza decorazioni.
-    -   `resize_browser_window(...)`: Ridimensiona la finestra figlia.
-    -   `navigate_browser(url)`: Naviga la finestra figlia.
-2.  Aggiunta dipendenza `tauri-plugin-webview` in `Cargo.toml` (ma stiamo usando `WebviewWindowBuilder` standard di Tauri v2, che è incluso).
+## ✅ Fasi Completate
 
-## 🚧 Cosa MANCA (Da fare subito nella prossima sessione)
+### 1. Backend Rust (`lib.rs`)
+- [x] Implementati comandi: `create_browser_window`, `resize_browser_window`, `navigate_browser`, `open_browser_devtools`.
+- [x] Aggiunta dipendenza `tauri-plugin-webview` e configurazione Child Window.
+- [x] **FIX CRITICO**: Corretto errore di sintassi (parentesi mancanti) nel codice Rust.
 
-### 1. Modifica Frontend (`src-web/renderer.js`)
-Bisogna riscrivere la funzione `createWebviewInstance` o la logica di `createTab` per NON usare più `iframe`.
+### 2. Frontend (`renderer.js`)
+- [x] Rimosso `document.createElement('iframe')`.
+- [x] Implementato `createWebviewInstance` che agisce da Proxy verso Rust.
+- [x] Implementato `switchToTab` per navigare la finestra fisica (Single Window Mode).
+- [x] Implementato `updateBrowserLayout` per sincronizzare la posizione della finestra.
 
-**Nuova logica da implementare:**
-Invece di:
-```javascript
-const webview = document.createElement('iframe');
+## 🚧 In Corso (Testing)
+- [ ] Compilazione ed Esecuzione Verificata.
+- [ ] Verifica caricamento Google nella finestra nativa.
+
+## 📅 Prossimi Passi (Dopo il Test)
+
+### 1. Gestione Eventi (Rust -> JS)
+Attualmente la barra URL non si aggiorna se l'utente naviga *dentro* la pagina web (es. clicca su un link).
+Bisogna implementare l'evento `request_navigate` o simile da Rust a JS:
+```rust
+// In lib.rs, dentro child.on_window_event
+app_handle.emit("browser-navigate", new_url);
 ```
-Dobbiamo fare:
+E in `renderer.js`:
 ```javascript
-// Chiamare Rust per creare la finestra nativa
-window.electronAPI.invoke('create_browser_window', { 
-    url: url, 
-    yOffset: 100.0, 
-    height: 800.0 
+window.electronAPI.on('browser-navigate', (url) => {
+    updateUrlBar(url);
 });
 ```
 
-### 2. Sincronizzazione Layout
-In `renderer.js`, bisogna aggiungere un listener per il resize della finestra principale:
-
-```javascript
-window.addEventListener('resize', () => {
-    // Calcola area disponibile (sotto la toolbar)
-    const contentRect = document.getElementById('webviews-container').getBoundingClientRect();
-    
-    // Comunica a Rust le nuove dimensioni
-    window.electronAPI.invoke('resize_browser_window', {
-        x: window.screenX + contentRect.x, // Attenzione alle coordinate schermo!
-        y: window.screenY + contentRect.y,
-        width: contentRect.width,
-        height: contentRect.height
-    });
-});
-```
-*Nota: Le coordinate richiedono attenzione tra coordinate web e fisiche del monitor.*
-
-### 3. Navigazione
-Aggiornare `handleNavigate` (barra URL) per chiamare `invoke('navigate_browser', { url })` invece di settare `iframe.src`.
+### 2. Rifiniture UI
+- [ ] Nascondere finestra browser quando si aprono Impostazioni/Segnalibri (per evitare sovrapposizione).
+- [ ] Aggiungere tasto destro (Menu Contestuale) personalizzato.
 
 ## Comandi per testare
-1.  Termina processi vecchi: `taskkill /F /IM cargo.exe /T`
+1.  Termina processi: `taskkill /F /IM cargo.exe /T`
 2.  Avvia dev: `npm run tauri:dev`
-
-## Note Tecniche
-L'approccio "Child Window" bypassa completamente `X-Frame-Options` e `CSP` di Google, rendendo il browser compatibile al 100% con il web moderno.
