@@ -1,4 +1,4 @@
-use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder, WebviewUrl, Listener};
+use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder, WebviewUrl, Listener, Emitter};
 use serde_json::{json, Value};
 use std::fs;
 use url::Url;
