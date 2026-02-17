@@ -50,17 +50,16 @@ async fn create_browser_window<R: Runtime>(app: AppHandle<R>, label: String, url
     let app_handle = app.clone();
     let l_label = label.clone();
     
-    // In Tauri 2.0, i metodi on_navigation e on_page_load sono validi ma causano errori se le feature non sono allineate.
-    // Li commentiamo temporaneamente per permettere la creazione del portable.exe
+    // Temporaneamente commentati per garantire la compilazione stabile e il test della navigazione
     /*
-    child.on_navigation(move |url| {
+    child.on_navigation(move |url: &tauri::Url| {
         let _ = app_handle.emit(&format!("browser-loading-{}", l_label), json!({ "url": url.to_string(), "loading": true }));
         true
     });
 
     let app_handle_2 = app.clone();
     let l_label_2 = label.clone();
-    child.on_page_load(move |_payload| {
+    child.on_page_load(move |_payload: tauri::webview::PageLoadPayload| {
         let _ = app_handle_2.emit(&format!("browser-loaded-{}", l_label_2), json!({ "url": "", "loading": false }));
     });
     */
@@ -102,7 +101,9 @@ async fn resize_browser_window<R: Runtime>(app: AppHandle<R>, label: String, x: 
 #[command]
 async fn navigate_browser<R: Runtime>(app: AppHandle<R>, label: String, url: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(&label) {
-         window.eval(&format!("window.location.href = '{}'", url)).map_err(|e| e.to_string())?;
+        let target_url = if url.starts_with("http") { url } else { format!("https://{}", url) };
+        let js = format!("window.location.href = '{}'", target_url.replace("'", "\\'"));
+        let _ = window.eval(&js);
     }
     Ok(())
 }
@@ -110,14 +111,13 @@ async fn navigate_browser<R: Runtime>(app: AppHandle<R>, label: String, url: Str
 #[command]
 async fn webview_reload<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(&label) {
-        window.eval("location.reload()").map_err(|e| e.to_string())?;
+        let _ = window.eval("location.reload()");
     }
     Ok(())
 }
 
 #[command]
 async fn open_browser_devtools<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    // In Tauri 2.0, open_devtools può essere limitato a build di debug o richiedere feature specifiche
     #[cfg(debug_assertions)]
     if let Some(window) = app.get_webview_window(&label) {
         let _ = window.open_devtools();

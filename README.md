@@ -18,20 +18,17 @@
 - **Leggerissimo**: Eseguibile di soli **~14MB** (contro i ~500MB di browser basati su Chromium completo)
 - **Memoria Efficiente**: Consumo di RAM ridotto grazie all'utilizzo di webview native del sistema
 - **Avvio Istantaneo**: Tempo di caricamento inferiore a 1 secondo
-- **Backend Rust**: Logica di sistema scritta in Rust per massime prestazioni e sicurezza
+# 🚀 Cosmonet Browser v1.3.0 - Tauri Native Edition
 
-### 🎨 Interfaccia Moderna
+Benvenuti nel futuro del **Cosmonet Browser**. Questa versione segna il passaggio definitivo a un'architettura nativa basata su **Tauri 2.1**, garantendo prestazioni elevate e il superamento dei limiti di sicurezza del browser (come il blocco X-Frame-Options su Google e YouTube).
 
-- **OLED Dark UI**: Interfaccia scura ottimizzata con palette Neutral Black
-- **Dashboard Personalizzata**: Homepage Cosmonet con ricerca rapida e link veloci
-- **Animazioni Fluide**: Transizioni smooth tra tab e pannelli
-- **Branding Cosmonet**: Logo e identità visiva ufficiale integrata
+---
 
-### 🛠️ Funzionalità Avanzate
-
-- 📑 **Browser Nativo Multi-Tab**: Ogni scheda è una Webview nativa indipendente (bypass totale di X-Frame-Options)
-- 🚀 **Performance Rust**: Gestione finestre e navigazione ultra-veloce via backend Rust
-- 📊 **Progress Bar**: Barra di caricamento reale integrata con gli eventi del motore browser
+## 🔥 Novità della v1.3.0
+- **Multi-Tab Nativo**: Ogni tab è ora una finestra webview nativa gestita da Rust.
+- **Bypass Totale**: Navigazione libera su Google, YouTube, Instagram e altri siti che bloccano gli iframe.
+- **Portable Edition**: Generazione di un singolo file eseguibile (`Cosmonet-Browser-Portable.exe`) che non richiede installazione.
+- **Core Rust**: Backend ottimizzato per la velocità e la sicurezza.
 - 📁 **Segnalibri Avanzati**: Organizzazione con cartelle, drag & drop e ricerca rapida
 - 🔑 **Password Manager**: Gestore password integrato con salvataggio automatico
 - 📡 **Feed RSS Cosmonet**: Ultime notizie dal sito direttamente nel browser

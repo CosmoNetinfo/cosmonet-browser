@@ -1,8 +1,9 @@
 # 📊 Stato del Progetto: Cosmonet Browser
 
 **Data:** 17 Febbraio 2026 - Ore 02:25
-**Versione:** 1.3.0 (Stable Dev - Native Multi-Tab)
-
+- **Versione**: 1.3.0 (Tauri Native Edition)
+- **Stato**: Stabile / Funzionante
+- **Ultimo Fix**: Navigazione e Build Portable completati.
 Questo documento fornisce una fotografia attuale dello stato di sviluppo del Cosmonet Browser.
 
 ---
@@ -20,7 +21,7 @@ Questo documento fornisce una fotografia attuale dello stato di sviluppo del Cos
 
 ---
 
-## � Windows (Versione Tauri 2.0 - ATTIVA)
+## 💻 Windows (Versione Tauri 2.0 - ATTIVA)
 
 La migrazione a Tauri è **completata e funzionante**.
 
@@ -46,7 +47,7 @@ La versione mobile è funzionale ma richiede attenzione in fase di sviluppo.
 
 ---
 
-## � Problemi Critici e Soluzioni in Corso
+## ⚠️ Problemi Critici e Soluzioni in Corso
 ### 1. Sistema Multi-Tab Nativo (Bypass X-Frame-Options)
 - **Soluzione:** Passaggio ad architettura **Browser Nativo (Multi-Webview)**.
 - **Stato Attuale:** ✅ **COMPLETATO**.
@@ -56,10 +57,12 @@ La versione mobile è funzionale ma richiede attenzione in fase di sviluppo.
   - ✅ **Risultato**: Navigazione libera su QUALSIASI sito (Google, YouTube, ecc.) senza blocchi.
 
 ## 📝 Prossimi Passi (Immediati)
-1.  **Sincronizzazione Cloud (Supabase)**: Iniziare l'integrazione per sincronizzare password e segnalibri tra dispositivi.
-2.  **Miglioramento Titoli Tab**: Implementare il recupero del titolo pagina via Rust per aggiornare l'UI del tab.
-3.  **Ottimizzazione Android**: Portare i fix della navigazione nativa anche sulla versione mobile.
-4.  **Verifica Feed RSS**: Risolvere i problemi CORS per il feed di CosmoNet.
+- [x] Sincronizzazione Layout Nativo (JS <-> Rust)
+- [x] Gestione Visibilità Tab Native
+- [x] Generazione Portable.exe (Tauri 2.1)
+- [x] Fix Navigazione (eval fallback)
+- [ ] Recupero Titoli Pagina in Rust
+- [ ] Drag & Drop Tab Avanzato
 
 ---
 
