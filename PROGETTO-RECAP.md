@@ -39,6 +39,7 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 
 - **Core Rust**: Implementato il backend nativo per una gestione file e memoria superiore.
 - **Native Webview Hooks**: Implementata l'iniezione stealth in Rust per bypassare i blocchi Google in modo più affidabile.
+- **Navigazione**: Implementata via Rust (`window.eval`), ma attualmente riportata come non funzionante. Necessita di investigazione (possibile problema di label o contesto JS nelle finestre native).
 - **Tauri Bridge API**: Creata una libreria di compatibilità (`tauri-bridge.js`) per mantenere il frontend esistente funzionante su Tauri.
 - **Sistema multi-tab nativo REALE**: Ogni scheda ha una sua WebviewWindow indipendente gestita da Rust.
 - **Bypass X-Frame-Options**: Risolto il problema del caricamento di Google, YouTube e siti protetti.
