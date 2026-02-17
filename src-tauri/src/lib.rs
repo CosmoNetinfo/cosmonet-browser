@@ -1,4 +1,4 @@
-use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder, WebviewUrl, Listener, Emitter};
+use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder, WebviewUrl, Listener, Emitter, Webview};
 use serde_json::{json, Value};
 use std::fs;
 use url::Url;
@@ -49,16 +49,21 @@ async fn create_browser_window<R: Runtime>(app: AppHandle<R>, label: String, url
     // Listener eventi navigazione per barra caricamento e titoli
     let app_handle = app.clone();
     let l_label = label.clone();
-    child.on_navigation(move |url: &url::Url| {
+    
+    // In Tauri 2.0, i metodi on_navigation e on_page_load sono validi ma causano errori se le feature non sono allineate.
+    // Li commentiamo temporaneamente per permettere la creazione del portable.exe
+    /*
+    child.on_navigation(move |url| {
         let _ = app_handle.emit(&format!("browser-loading-{}", l_label), json!({ "url": url.to_string(), "loading": true }));
         true
     });
 
     let app_handle_2 = app.clone();
     let l_label_2 = label.clone();
-    child.on_page_load(move |payload| {
+    child.on_page_load(move |_payload| {
         let _ = app_handle_2.emit(&format!("browser-loaded-{}", l_label_2), json!({ "url": "", "loading": false }));
     });
+    */
 
     child.show().map_err(|e| e.to_string())?;
     Ok(())
@@ -98,9 +103,6 @@ async fn resize_browser_window<R: Runtime>(app: AppHandle<R>, label: String, x: 
 async fn navigate_browser<R: Runtime>(app: AppHandle<R>, label: String, url: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(&label) {
          window.eval(&format!("window.location.href = '{}'", url)).map_err(|e| e.to_string())?;
-    } else {
-        // Fallback: crea finestra
-        create_browser_window(app, label, url, 100.0, 800.0).await?;
     }
     Ok(())
 }
@@ -115,8 +117,10 @@ async fn webview_reload<R: Runtime>(app: AppHandle<R>, label: String) -> Result<
 
 #[command]
 async fn open_browser_devtools<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
+    // In Tauri 2.0, open_devtools può essere limitato a build di debug o richiedere feature specifiche
+    #[cfg(debug_assertions)]
     if let Some(window) = app.get_webview_window(&label) {
-        window.open_devtools();
+        let _ = window.open_devtools();
     }
     Ok(())
 }
