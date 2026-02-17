@@ -49,7 +49,7 @@ async fn create_browser_window<R: Runtime>(app: AppHandle<R>, label: String, url
     // Listener eventi navigazione per barra caricamento e titoli
     let app_handle = app.clone();
     let l_label = label.clone();
-    child.on_navigation(move |url| {
+    child.on_navigation(move |url: &url::Url| {
         let _ = app_handle.emit(&format!("browser-loading-{}", l_label), json!({ "url": url.to_string(), "loading": true }));
         true
     });
