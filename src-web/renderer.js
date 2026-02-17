@@ -162,11 +162,13 @@ async function init() {
 function createWebviewInstance(id, url) {
     console.log(`Richiesta creazione Browser View per: ${url} (ID: ${id})`);
     
-    // Calcola layout iniziale (coordinate RELATIVE alla finestra per Webview integrata)
+    // Calcola layout iniziale (coordinate schermo per sovrapporre al container)
     const container = document.getElementById('webviews-container');
     const rect = container.getBoundingClientRect();
-    const x = rect.x;
-    const y = rect.y;
+    const winX = window.screenX ?? 0;
+    const winY = window.screenY ?? 0;
+    const x = winX + rect.x;
+    const y = winY + rect.y;
     const width = Math.max(rect.width, 100);
     const height = Math.max(rect.height, 100);
     
@@ -272,11 +274,12 @@ function syncTauriWebview(tabId) {
     if (!container) return;
     
     const rect = container.getBoundingClientRect();
+    const winX = window.screenX;
+    const winY = window.screenY;
     
-    // Con Webview nativa (non WebviewWindow), le coordinate x e y sono RELATIVE
-    // alla finestra principale, quindi corrispondono esattamente a rect.x e rect.y
-    const x = rect.x;
-    const y = rect.y;
+    // Con WebviewWindow (finestra separata), le coordinate x e y sono ASSOLUTE (schermo)
+    const x = winX + rect.x;
+    const y = winY + rect.y;
     const width = rect.width;
     const height = rect.height;
 

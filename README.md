@@ -2,7 +2,7 @@
 
 > La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.5-blue.svg)
 ![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.1-ffc131.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -25,18 +25,14 @@
 
 ---
 
-## 🔥 Novità della v1.3.1
+## 🔥 Novità della v1.3.5
 
-- **Multi-Tab Nativo**: Ogni tab è ora una finestra webview nativa gestita da Rust.
-- **Bypass Totale**: Navigazione libera su Google, YouTube, Instagram e altri siti che bloccano gli iframe.
-- **Navigazione Robusta**: Utilizzo di API native Tauri per caricamenti veloci e affidabili.
-- **Debug Integrato**: Accesso ai DevTools e console Eruda integrata per il debugging rapido.
-- **Portable Edition**: Generazione di un singolo file eseguibile (`Cosmonet-Browser-Portable.exe`) che non richiede installazione.
-- **Core Rust**: Backend ottimizzato per la velocità e la sicurezza.
+- 🛠️ **Fix Schede Sganciate**: Risolto il problema delle schede che si "staccavano" dalla finestra principale durante lo spostamento della finestra.
+- 🔗 **Parenting Nativo**: Implementata l'appartenenza (parenting) a livello di sistema operativo per le finestre delle schede.
+- 📐 **Sincronizzazione Layout**: Ottimizzato il sistema di coordinate per garantire un allineamento perfetto tra webview nativa e interfaccia utente.
+- ✅ **Stabilità Migliorata**: Corretti vari bug di navigazione e gestione tab in ambiente Tauri 2.10.
 - 📁 **Segnalibri Avanzati**: Organizzazione con cartelle, drag & drop e ricerca rapida
 - 🔑 **Password Manager**: Gestore password integrato con salvataggio automatico
-- 📡 **Feed RSS Cosmonet**: Ultime notizie dal sito direttamente nel browser
-- 📖 **Modalità Lettura**: Vista ottimizzata per articoli senza distrazioni
 - 🌐 **Google Login Bypass**: Stealth mode avanzato per accedere ai servizi Google senza blocchi
 
 ---

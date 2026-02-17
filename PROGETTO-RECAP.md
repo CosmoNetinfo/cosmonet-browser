@@ -36,7 +36,7 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 - **Fix v1.3.2 (Tauri 2.10 Navigation & Layout - 17 Feb 2026)**: Corretto mismatch label tra frontend e backend (Rust usa `webview-{tabId}`, ora passato correttamente). Posizione e dimensione iniziali della finestra webview impostate già in `create_browser_window` per evitare finestre invisibili a (0,0). `tauri-bridge` e `renderer.js` inviano `x,y,width,height` al comando Rust. Aggiornato `set_position`/`set_size` per API Tauri 2.10 (`LogicalPosition`/`LogicalSize`). Fix per `config.homeUrl` inesistente → uso di `config.startupUrls[0]`. Gestione URL locali (`home.html`) in `navigate_browser`. Sync layout dopo creazione finestra.
 - **Fix v1.3.3 (Avvio massimizzato - 17 Feb 2026)**: Impostato `maximized: true` in `tauri.conf.json` per far partire il browser a tutto schermo, evitando il disallineamento delle schede webview quando la finestra non è massimizzata.
 - **Fix v1.3.4 (Schede integrate e X visibile - 17 Feb 2026)**: Bottone chiusura (×) delle schede reso più visibile e grande. Stile tab bar aggiornato per collegamento visivo con l'area contenuto (stile Chrome). Tab attiva con bordo che si unisce al contenuto. Tooltip "Chiudi scheda" sul pulsante X.
-- **Fix v1.3.5 (In corso - Fix Schede Sganciate)**: Iniziata la transizione da `WebviewWindow` (finestra separata) a `Webview` integrata (child webview). Questo permetterà alle schede di restare fisicamente agganciate alla finestra principale. Il frontend è stato aggiornato per usare coordinate relative. Backend Rust in fase di aggiornamento per API Tauri 2.10.
+- **Fix v1.3.5 (Fix Schede Sganciate - 17 Feb 2026)**: Risolto il bug delle schede che si "staccavano" dalla finestra principale durante lo spostamento o il ridimensionamento. Implementato parenting forzato a livello OS tra la finestra principale e le webview child. Sincronizzazione layout ottimizzata con coordinate assolute dello schermo.
 
 ---
 
@@ -121,11 +121,11 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 
 ---
 
-**Data Ultimo Aggiornamento**: 17 Febbraio 2026 - 13:35
+**Data Ultimo Aggiornamento**: 17 Febbraio 2026 - 19:35
 
 **Stato**: 🟢 Windows (Electron Stable) | 🟢 **Tauri 2.0 (Core Migrato & Pushato)** | 🟡 Android (Capacitor)
 
-**Ultimo Commit**: `4f7f7f6` - Migrazione iniziale a Tauri 2.0, aggiornamento documentazione e bypass Google Login v2
+**Ultimo Commit**: `8f84d85` - Fix schede sganciate (v1.3.5) e sincronizzazione layout Tauri.
 
 **Nota per Antigravity**: Aggiornare questo file (`PROGETTO-RECAP.md`) ogni volta che si modificano i sorgenti, per mantenere la documentazione sincronizzata.
 
