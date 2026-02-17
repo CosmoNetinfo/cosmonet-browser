@@ -2,6 +2,8 @@
 
 Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionalità implementate per il **Cosmonet Browser** (Windows & Android).
 
+> ⚠️ **Convenzione**: Aggiornare questo file ogni volta che si modificano i sorgenti (Cursor, Antigravity, ecc.) per mantenere la documentazione sincronizzata.
+
 ---
 
 ## 💻 Versione Windows (Completata & Ottimizzata)
@@ -30,6 +32,11 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 - **Fix v1.2.0 (Stealth Mode & Aesthetic)**: Implementata Modalità Stealth tramite `webview-preload.js` per mascherare completamente l'ambiente Electron a Google. Aggiornato lo sfondo della Home con l'immagine professionale dell'alieno mascotte e impostato il colore antracite (#262626).
 - **Fix v1.2.1 (Ultimate Google Bypass)**: Forzata consistenza User-Agent (Chrome 121) a livello di sessione, webview e headers. Potenziato lo script di stealth per mascherare hardware e lingue, e rimosso header sospetti in modo più aggressivo per superare i blocchi OAuth di Google.
 - **Fix v1.3.0 (Native Multi-Tab & Progress Bar)**: Rivoluzionata l'architettura dei tab. Ogni scheda ora gestisce una sua finestra nativa Tauri (Bypass totale di X-Frame-Options). Implementata barra di caricamento professionale con feedback dal backend Rust. Risolto bug dello schermo bianco.
+- **Fix v1.3.1 (Tauri 2.1 Navigation & Debug Tools)**: Ripristinata la navigazione nativa tramite il metodo `window.navigate` (Rust). Abilitati i DevTools nativi e integrato **Eruda** come console di debug in-app. Risolto bug del borrow checker in Rust e implementato il fix per i permessi `sandbox` degli iframe.
+- **Fix v1.3.2 (Tauri 2.10 Navigation & Layout - 17 Feb 2026)**: Corretto mismatch label tra frontend e backend (Rust usa `webview-{tabId}`, ora passato correttamente). Posizione e dimensione iniziali della finestra webview impostate già in `create_browser_window` per evitare finestre invisibili a (0,0). `tauri-bridge` e `renderer.js` inviano `x,y,width,height` al comando Rust. Aggiornato `set_position`/`set_size` per API Tauri 2.10 (`LogicalPosition`/`LogicalSize`). Fix per `config.homeUrl` inesistente → uso di `config.startupUrls[0]`. Gestione URL locali (`home.html`) in `navigate_browser`. Sync layout dopo creazione finestra.
+- **Fix v1.3.3 (Avvio massimizzato - 17 Feb 2026)**: Impostato `maximized: true` in `tauri.conf.json` per far partire il browser a tutto schermo, evitando il disallineamento delle schede webview quando la finestra non è massimizzata.
+- **Fix v1.3.4 (Schede integrate e X visibile - 17 Feb 2026)**: Bottone chiusura (×) delle schede reso più visibile e grande. Stile tab bar aggiornato per collegamento visivo con l'area contenuto (stile Chrome). Tab attiva con bordo che si unisce al contenuto. Tooltip "Chiudi scheda" sul pulsante X.
+- **Fix v1.3.5 (In corso - Fix Schede Sganciate)**: Iniziata la transizione da `WebviewWindow` (finestra separata) a `Webview` integrata (child webview). Questo permetterà alle schede di restare fisicamente agganciate alla finestra principale. Il frontend è stato aggiornato per usare coordinate relative. Backend Rust in fase di aggiornamento per API Tauri 2.10.
 
 ---
 
@@ -39,7 +46,8 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 
 - **Core Rust**: Implementato il backend nativo per una gestione file e memoria superiore.
 - **Native Webview Hooks**: Implementata l'iniezione stealth in Rust per bypassare i blocchi Google in modo più affidabile.
-- **Navigazione**: Implementata via Rust (`window.eval`), ma attualmente riportata come non funzionante. Necessita di investigazione (possibile problema di label o contesto JS nelle finestre native).
+- **Navigazione Nativa (Fixata)**: Implementata la navigazione robusta via Rust (`window.navigate`) superando i limiti del semplice `eval`.
+- **Debug Room**: Integrato Eruda e abilitati i DevTools nativi via Rust per facilitare lo sviluppo.
 - **Tauri Bridge API**: Creata una libreria di compatibilità (`tauri-bridge.js`) per mantenere il frontend esistente funzionante su Tauri.
 - **Sistema multi-tab nativo REALE**: Ogni scheda ha una sua WebviewWindow indipendente gestita da Rust.
 - **Bypass X-Frame-Options**: Risolto il problema del caricamento di Google, YouTube e siti protetti.
@@ -59,7 +67,7 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 - [x] Loading Bar Professionale
 - [x] Google Login Stealth Mode (Bypass v2)
 - [x] Build Windows (Electron Stable)
-- [x] **Migrazione Tauri 2.0 (Sistema Webview Nativo Funzionante)**
+- [x] **Migrazione Tauri 2.1 (Sistema Webview Nativo Funzionante)**
 - [ ] Build Windows (Tauri Release) - *Prossimo step*
 - [ ] Build Android (Capacitor Refinement)
 - [ ] Sincronizzazione Cloud (Supabase) - *Pianificato*
@@ -113,9 +121,11 @@ Questo documento riassume tutte le modifiche, le soluzioni e le nuove funzionali
 
 ---
 
-**Data Ultimo Aggiornamento**: 16 Febbraio 2026 - 14:48
+**Data Ultimo Aggiornamento**: 17 Febbraio 2026 - 13:35
 
 **Stato**: 🟢 Windows (Electron Stable) | 🟢 **Tauri 2.0 (Core Migrato & Pushato)** | 🟡 Android (Capacitor)
 
 **Ultimo Commit**: `4f7f7f6` - Migrazione iniziale a Tauri 2.0, aggiornamento documentazione e bypass Google Login v2
+
+**Nota per Antigravity**: Aggiornare questo file (`PROGETTO-RECAP.md`) ogni volta che si modificano i sorgenti, per mantenere la documentazione sincronizzata.
 

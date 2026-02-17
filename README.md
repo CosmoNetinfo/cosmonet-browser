@@ -2,31 +2,35 @@
 
 > La tua porta d'accesso personalizzata alla galassia digitale di **cosmonet.info**.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
-![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.0-ffc131.svg)
+![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)
+![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202.1-ffc131.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**Cosmonet Browser** è un browser personalizzato costruito con **Tauri 2.0** e **Rust**, progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info). Offre un'esperienza di navigazione veloce, sicura e leggera con funzionalità avanzate per la gestione di tab, segnalibri e password.
+**Cosmonet Browser** è un browser personalizzato costruito con **Tauri 2.1** e **Rust**, progettato specificamente per la community di [CosmoNet](https://www.cosmonet.info). Offre un'esperienza di navigazione veloce, sicura e leggera con funzionalità avanzate per la gestione di tab, segnalibri e password.
 
 ---
 
 ## 🚀 Caratteristiche Principali
 
-### ⚡ Prestazioni Eccezionali
-
 - **Leggerissimo**: Eseguibile di soli **~14MB** (contro i ~500MB di browser basati su Chromium completo)
 - **Memoria Efficiente**: Consumo di RAM ridotto grazie all'utilizzo di webview native del sistema
 - **Avvio Istantaneo**: Tempo di caricamento inferiore a 1 secondo
-# 🚀 Cosmonet Browser v1.3.0 - Tauri Native Edition
-
-Benvenuti nel futuro del **Cosmonet Browser**. Questa versione segna il passaggio definitivo a un'architettura nativa basata su **Tauri 2.1**, garantendo prestazioni elevate e il superamento dei limiti di sicurezza del browser (come il blocco X-Frame-Options su Google e YouTube).
+- **Multi-Tab Nativo**: Ogni tab è ora una finestra webview nativa gestita da Rust
+- **Bypass Totale**: Navigazione libera su Google, YouTube, Instagram e altri siti che bloccano gli iframe
+- **Navigazione Robusta**: Utilizzo di API native Tauri per caricamenti veloci e affidabili
+- **Debug Integrato**: Accesso ai DevTools e console Eruda integrata per il debugging rapido
+- **Portable Edition**: Generazione di un singolo file eseguibile (`Cosmonet-Browser-Portable.exe`) che non richiede installazione
+- **Core Rust**: Backend ottimizzato per la velocità e la sicurezza
 
 ---
 
-## 🔥 Novità della v1.3.0
+## 🔥 Novità della v1.3.1
+
 - **Multi-Tab Nativo**: Ogni tab è ora una finestra webview nativa gestita da Rust.
 - **Bypass Totale**: Navigazione libera su Google, YouTube, Instagram e altri siti che bloccano gli iframe.
+- **Navigazione Robusta**: Utilizzo di API native Tauri per caricamenti veloci e affidabili.
+- **Debug Integrato**: Accesso ai DevTools e console Eruda integrata per il debugging rapido.
 - **Portable Edition**: Generazione di un singolo file eseguibile (`Cosmonet-Browser-Portable.exe`) che non richiede installazione.
 - **Core Rust**: Backend ottimizzato per la velocità e la sicurezza.
 - 📁 **Segnalibri Avanzati**: Organizzazione con cartelle, drag & drop e ricerca rapida
@@ -127,16 +131,19 @@ cosmonet-browser/
 ### 🚧 Roadmap & Stato Corrente
 
 #### 🔄 In Corso (Priorità Alta)
+
 - [x] **Migrazione a Browser Nativo (Multi-Window)**:
-    - ✅ Backend Rust completo (multi-webview dinamica)
-    - ✅ Frontend JS integrato (gestione label e visibilità)
-    - ✅ Bypass `X-Frame-Options` (Google, YouTube, Netflix funzionanti)
-    - ✅ Barra di caricamento sincronizzata con il backend
+  - ✅ Backend Rust completo (multi-webview dinamica)
+  - ✅ Frontend JS integrato (gestione label e visibilità)
+  - ✅ Bypass `X-Frame-Options` (Google, YouTube, Netflix funzionanti)
+  - ✅ Barra di caricamento sincronizzata con il backend
 - [ ] **Android Porting**: Versione mobile basata su Capacitor
 
 #### ✅ Completato
-- [x] Migrazione Core da Electron a Tauri 2.0
+
+- [x] Migrazione Core da Electron a Tauri 2.1
 - [x] Backend Rust performante
+- [x] Navigazione Nativa Funzionante
 - [x] Gestore segnalibri e password (locale)
 - [x] Multi-Tab Nativo & Loading Bar
 - [x] Dashboard Cosmonet personalizzata
@@ -148,19 +155,19 @@ cosmonet-browser/
 
 Per completare la trasformazione in un "Vero Browser" funzionante con tutti i siti moderni:
 
-1.  **Backend (Fatto ✅)**:
-    - [x] Architettura multi-webview con label dinamiche.
-    - [x] Eventi di caricamento emessi da Rust a JS.
+1. **Backend (Fatto ✅)**:
+   - [x] Architettura multi-webview con label dinamiche.
+   - [x] Eventi di caricamento emessi da Rust a JS.
 
-2.  **Frontend (Fatto ✅)**:
-    - [x] Integrazione `tauri-bridge.js` per gestione finestre native.
-    - [x] Inserimento progress bar Cosmo-Style.
-    - [x] Switch intelligente di focus e visibilità tra tab.
+2. **Frontend (Fatto ✅)**:
+   - [x] Integrazione `tauri-bridge.js` per gestione finestre native.
+   - [x] Inserimento progress bar Cosmo-Style.
+   - [x] Switch intelligente di focus e visibilità tra tab.
 
-3.  **Prossimi Step 🎯**:
-    - [ ] Sincronizzazione Cloud dei dati.
-    - [ ] Ottimizzazione performance su sistemi a basso consumo.
-    - [ ] Porting dei fix nativi su Android.
+3. **Prossimi Step 🎯**:
+   - [ ] Sincronizzazione Cloud dei dati.
+   - [ ] Ottimizzazione performance su sistemi a basso consumo.
+   - [ ] Porting dei fix nativi su Android.
 
 ---
 

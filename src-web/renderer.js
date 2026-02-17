@@ -162,13 +162,21 @@ async function init() {
 function createWebviewInstance(id, url) {
     console.log(`Richiesta creazione Browser View per: ${url} (ID: ${id})`);
     
-    // Calcola layout iniziale
+    // Calcola layout iniziale (coordinate RELATIVE alla finestra per Webview integrata)
     const container = document.getElementById('webviews-container');
     const rect = container.getBoundingClientRect();
+    const x = rect.x;
+    const y = rect.y;
+    const width = Math.max(rect.width, 100);
+    const height = Math.max(rect.height, 100);
     
     // Invoca backend per creare la finestra nativa specifica (label = id)
     if (isTauri && window.electronAPI && window.electronAPI.createWebView) {
-        window.electronAPI.createWebView(id, url, rect.y, rect.height)
+        window.electronAPI.createWebView(id, url, x, y, width, height)
+            .then(() => {
+                // Finestra creata: sincronizza subito layout
+                syncTauriWebview(id);
+            })
             .catch(err => console.error("Errore creazione browser window:", err));
         
         // Listener per caricamento
@@ -193,10 +201,18 @@ function createWebviewInstance(id, url) {
         setTimeout(() => syncTauriWebview(id), 100);
     }
     
-    const webviewElement = document.createElement('div');
+    // Crea placeholder o iframe reale se preferito per debug
+    // Per Soluzione 1 (Sandbox): Se vogliamo usare iframe, cambiamo div in iframe
+    const webviewElement = document.createElement('div'); 
     webviewElement.id = `webview-placeholder-${id}`;
     webviewElement.className = 'webview-placeholder';
     webviewElement.style.display = 'none';
+
+    // Aggiungi sandbox se fosse un iframe (come richiesto in Soluzione 1)
+    if (webviewElement.tagName === 'IFRAME') {
+        webviewElement.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation allow-top-navigation-by-user-activation allow-modals allow-downloads');
+    }
+    
     webviewsContainer.appendChild(webviewElement);
 
     let currentUrl = url;
@@ -243,6 +259,12 @@ function updateBrowserLayout() {
     if (activeTabId) syncTauriWebview(activeTabId);
 }
 
+// Helper: il backend Rust usa label "webview-{tabId}"; accetta sia tabId che webviewId
+function getWebviewLabel(tabIdOrLabel) {
+    if (tabIdOrLabel && String(tabIdOrLabel).startsWith('webview-')) return tabIdOrLabel;
+    return `webview-${tabIdOrLabel}`;
+}
+
 function syncTauriWebview(tabId) {
     if (!isTauri) return;
     
@@ -250,16 +272,16 @@ function syncTauriWebview(tabId) {
     if (!container) return;
     
     const rect = container.getBoundingClientRect();
-    const winX = window.screenX;
-    const winY = window.screenY;
     
-    const x = winX + rect.x;
-    const y = winY + rect.y;
+    // Con Webview nativa (non WebviewWindow), le coordinate x e y sono RELATIVE
+    // alla finestra principale, quindi corrispondono esattamente a rect.x e rect.y
+    const x = rect.x;
+    const y = rect.y;
     const width = rect.width;
     const height = rect.height;
 
     if (window.electronAPI && window.electronAPI.resizeWebView) {
-        window.electronAPI.resizeWebView(tabId, x, y, width, height);
+        window.electronAPI.resizeWebView(getWebviewLabel(tabId), x, y, width, height);
     }
 }
 
@@ -277,9 +299,10 @@ function setupEventListeners() {
         }
     });
 
-    // Debugging: F12 apre i devtools della webview attiva
+    // Debugging: F12 o Ctrl+Shift+I apre i devtools della webview attiva
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'F12') {
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+            e.preventDefault();
             getActiveWebview()?.openDevTools();
         }
     });
@@ -336,8 +359,8 @@ function setupEventListeners() {
     });
 
     document.getElementById('menu-new-window').addEventListener('click', () => {
-        // Opzionale: implementare nuova finestra reale se necessario
-        createTab(config.homeUrl);
+        const homeUrl = config.startupUrls?.[0] || 'https://www.cosmonet.info/';
+        createTab(homeUrl);
         mainMenu.classList.remove('visible');
     });
 
@@ -492,15 +515,11 @@ function renderTab(tab) {
     titleSpan.className = 'tab-title';
     titleSpan.textContent = tab.title || 'Nuova Tab';
     
-    // Bottone chiusura
+    // Bottone chiusura (X visibile)
     const closeBtn = document.createElement('button');
     closeBtn.className = 'tab-close';
-    closeBtn.innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-    `;
+    closeBtn.title = 'Chiudi scheda';
+    closeBtn.innerHTML = '×';
     
     tabElement.appendChild(faviconImg);
     tabElement.appendChild(titleSpan);
@@ -538,14 +557,14 @@ function switchToTab(tabId) {
         tab.webview.classList.add('active');
         activeTabId = tabId;
         
-        // Gestione visibilità finestre native Tauri
+        // Gestione visibilità finestre native Tauri (Rust usa label "webview-{tabId}")
         if (isTauri && window.electronAPI && window.electronAPI.setWebViewVisibility) {
             // Nascondi vecchia se diversa
             if (oldTabId && oldTabId !== tabId) {
-                window.electronAPI.setWebViewVisibility(oldTabId, false);
+                window.electronAPI.setWebViewVisibility(getWebviewLabel(oldTabId), false);
             }
             // Mostra nuova
-            window.electronAPI.setWebViewVisibility(tabId, true);
+            window.electronAPI.setWebViewVisibility(getWebviewLabel(tabId), true);
             // Sincronizza posizione
             syncTauriWebview(tabId);
         }
@@ -568,7 +587,7 @@ function closeTab(tabId) {
     
     const tab = tabs[tabIndex];
     if (isTauri && window.electronAPI && window.electronAPI.closeWebView) {
-        window.electronAPI.closeWebView(tab.id);
+        window.electronAPI.closeWebView(getWebviewLabel(tab.id));
     }
     tab.webview.remove();
     document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
@@ -577,7 +596,7 @@ function closeTab(tabId) {
     
     if (tabs.length === 0) {
         if (isElectron) window.close();
-        else createTab(config.homeUrl);
+        else createTab(config.startupUrls?.[0] || 'https://www.cosmonet.info/');
         return;
     }
     
@@ -667,18 +686,39 @@ function navigateToUrl(input) {
     }
     
     const contentElement = getActiveWebview();
+    console.log(`Navigating tab ${activeTabId} to: ${url}`);
+    
     if (contentElement) {
         contentElement.src = url;
-        // Salva l'URL nella tab per Android
+        // Salva l'URL nella tab per Android/Tauri sync
         const tab = tabs.find(t => t.id === activeTabId);
-        if (tab) tab.url = url;
+        if (tab) {
+            tab.url = url;
+            tab.title = url; // Placeholder in attesa di caricamento
+            renderTab(tab); 
+        }
         
         if (!isElectron) {
             updateUrlBar(url);
-            addToHistory(url, "Navigazione Android");
+            addToHistory(url, "Navigazione");
         }
+    } else {
+        console.error("No active content element found during navigation!");
     }
 }
+
+// Helper per Debug Rapido richiesto dall'utente
+window.testNavigation = function(url = 'https://www.google.com') {
+    console.log("Esecuzione Test Rapido Navigazione...");
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        iframe.src = url;
+        console.log("Iframe trovato. Navigazione avviata.");
+    } else {
+        console.warn("Nessun iframe trovato in index.html. Cerco webview placeholder...");
+        navigateToUrl(url);
+    }
+};
 
 function getActiveWebview() {
     const tab = tabs.find(t => t.id === activeTabId);
@@ -1333,8 +1373,8 @@ async function saveSettings() {
     const urlInputs = document.querySelectorAll('.startup-url-input');
     config.startupUrls = Array.from(urlInputs).map(input => input.value).filter(url => url.trim() !== '');
     
-    config.searchEngine = settingSearchEnginePage.value;
-    config.darkMode = settingDarkModePage.checked;
+    if (settingSearchEnginePage) config.searchEngine = settingSearchEnginePage.value;
+    if (settingDarkModePage) config.darkMode = settingDarkModePage.checked;
     
     await window.electronAPI.saveSettings(config);
     applySettings();
@@ -1382,8 +1422,8 @@ function applySettings() {
 
 function updateSettingsUI() {
     renderStartupUrlsList();
-    settingSearchEnginePage.value = config.searchEngine;
-    settingDarkModePage.checked = config.darkMode;
+    if (settingSearchEnginePage) settingSearchEnginePage.value = config.searchEngine;
+    if (settingDarkModePage) settingDarkModePage.checked = config.darkMode;
 }
 
 // Cosmo Feed & Reading Mode

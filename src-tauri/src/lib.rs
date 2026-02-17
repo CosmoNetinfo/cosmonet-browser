@@ -1,89 +1,81 @@
-use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder, WebviewUrl, Listener, Emitter, Webview};
+use tauri::{command, AppHandle, Manager, Runtime, webview::WebviewBuilder};
 use serde_json::{json, Value};
 use std::fs;
-use url::Url;
 
 // --- Gestione Browser View (Vero Browser) ---
 
 #[command]
-async fn create_browser_window<R: Runtime>(app: AppHandle<R>, label: String, url: String, y_offset: f64, height: f64) -> Result<(), String> {
-    // Se esiste già, naviga
-    if let Some(window) = app.get_webview_window(&label) {
-        window.eval(&format!("window.location.href = '{}'", url)).map_err(|e| e.to_string())?;
+async fn create_browser_window<R: Runtime>(
+    app: AppHandle<R>,
+    label: String,
+    url: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    // Crea la finestra contenuto in modo sicuro
+    let tauri_url = if url.starts_with("http") {
+        match tauri::Url::parse(&url) {
+            Ok(u) => tauri::WebviewUrl::External(u),
+            Err(e) => return Err(format!("URL non valido: {}", e)),
+        }
+    } else if url.ends_with(".html") || !url.contains('.') {
+        tauri::WebviewUrl::App(url.clone().into())
+    } else {
+        match tauri::Url::parse(&format!("https://{}", url)) {
+            Ok(u) => tauri::WebviewUrl::External(u),
+            Err(e) => return Err(format!("URL non valido: {}", e)),
+        }
+    };
+
+    // Se esiste già, naviga e ridimensiona
+    if let Some(webview) = app.get_webview(&label) {
+        if let tauri::WebviewUrl::External(u) = tauri_url {
+            webview.navigate(u).map_err(|e| e.to_string())?;
+        } else if let tauri::WebviewUrl::App(p) = tauri_url {
+            let js = format!("window.location.href = '{}'", p.to_string_lossy().replace("'", "\\'"));
+            let _ = webview.eval(&js);
+        }
+        // Aggiorna posizione/dimensione (Relativa alla finestra)
+        let _ = webview.set_position(tauri::LogicalPosition { x, y });
+        let _ = webview.set_size(tauri::LogicalSize { width, height });
+        // In Tauri 2.x v2 Webviews non sono finestre, quindi non hanno show() ma set_visible()
+        // Tuttavia, a volte è necessario rinfrescare lo stato
         return Ok(());
     }
 
-    // Crea la finestra contenuto in modo sicuro
-    let tauri_url = if url.starts_with("http") {
-        match url::Url::parse(&url) {
-            Ok(u) => tauri::WebviewUrl::External(u),
-            Err(e) => return Err(format!("URL non valido: {}", e)),
-        }
-    } else {
-        // Se non è un URL assoluto, prova a interpretarlo come percorso app o premetti https
-        match url::Url::parse(&format!("https://{}", url)) {
-            Ok(u) => tauri::WebviewUrl::External(u),
-            Err(e) => return Err(format!("URL non valido: {}", e)),
-        }
-    };
-
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
 
-    let child = WebviewWindowBuilder::new(&app, &label, tauri_url)
-        .title("Content")
-        .decorations(false)
-        .resizable(false)
-        .visible(false)
-        .skip_taskbar(true)
-        .parent(&main_window).map_err(|e| e.to_string())?
-        .build();
+    // In Tauri 2.x, Manager::create_webview è l'API pubblica per aggiungere un webview a una finestra.
+    // Questo lo rende parte integrante della finestra (non una finestra separata).
+    let _webview = app.create_webview(
+        label,
+        tauri_url,
+        main_window.as_ref().clone(), // Passiamo la finestra a cui agganciarlo
+        tauri::LogicalPosition { x, y },
+        tauri::LogicalSize { width, height }
+    ).map_err(|e: tauri::Error| e.to_string())?;
 
-    let child = match child {
-        Ok(c) => c,
-        Err(e) => {
-            println!("Errore fatale creazione finestra {}: {}", label, e);
-            return Err(e.to_string());
-        }
-    };
-
-    // Listener eventi navigazione per barra caricamento e titoli
-    let app_handle = app.clone();
-    let l_label = label.clone();
-    
-    // Temporaneamente commentati per garantire la compilazione stabile e il test della navigazione
-    /*
-    child.on_navigation(move |url: &tauri::Url| {
-        let _ = app_handle.emit(&format!("browser-loading-{}", l_label), json!({ "url": url.to_string(), "loading": true }));
-        true
-    });
-
-    let app_handle_2 = app.clone();
-    let l_label_2 = label.clone();
-    child.on_page_load(move |_payload: tauri::webview::PageLoadPayload| {
-        let _ = app_handle_2.emit(&format!("browser-loaded-{}", l_label_2), json!({ "url": "", "loading": false }));
-    });
-    */
-
-    child.show().map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[command]
 async fn close_browser_window<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.close().map_err(|e| e.to_string())?;
+    if let Some(webview) = app.get_webview(&label) {
+        webview.close().map_err(|e| e.to_string())?;
     }
     Ok(())
 }
 
 #[command]
 async fn set_browser_visibility<R: Runtime>(app: AppHandle<R>, label: String, visible: bool) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
+    if let Some(webview) = app.get_webview(&label) {
         if visible {
-            window.show().map_err(|e| e.to_string())?;
-            window.set_focus().map_err(|e| e.to_string())?;
+            webview.show().map_err(|e| e.to_string())?;
+            webview.set_focus().map_err(|e| e.to_string())?;
         } else {
-            window.hide().map_err(|e| e.to_string())?;
+            webview.hide().map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -91,36 +83,52 @@ async fn set_browser_visibility<R: Runtime>(app: AppHandle<R>, label: String, vi
 
 #[command]
 async fn resize_browser_window<R: Runtime>(app: AppHandle<R>, label: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y })).map_err(|e| e.to_string())?;
-        window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height })).map_err(|e| e.to_string())?;
+    if let Some(webview) = app.get_webview(&label) {
+        let _ = webview.set_position(tauri::LogicalPosition { x, y });
+        let _ = webview.set_size(tauri::LogicalSize { width, height });
     }
     Ok(())
 }
 
 #[command]
 async fn navigate_browser<R: Runtime>(app: AppHandle<R>, label: String, url: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
+    if let Some(webview) = app.get_webview(&label) {
+        // URL locali (es. home.html)
+        if url.ends_with(".html") || url == "home" || (!url.starts_with("http") && !url.contains('.')) {
+            let path = if url == "home" { "home.html" } else { &url };
+            let js = format!("window.location.href = '{}'", path.replace("'", "\\'"));
+            let _ = webview.eval(&js);
+            return Ok(());
+        }
+        
         let target_url = if url.starts_with("http") { url } else { format!("https://{}", url) };
-        let js = format!("window.location.href = '{}'", target_url.replace("'", "\\'"));
-        let _ = window.eval(&js);
+        if let Ok(u) = tauri::Url::parse(&target_url) {
+            webview.navigate(u).map_err(|e| e.to_string())?;
+        } else {
+            let js = format!("window.location.href = '{}'", target_url.replace("'", "\\'"));
+            let _ = webview.eval(&js);
+        }
     }
     Ok(())
 }
 
 #[command]
 async fn webview_reload<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        let _ = window.eval("location.reload()");
+    if let Some(webview) = app.get_webview(&label) {
+        let _ = webview.eval("location.reload()");
     }
     Ok(())
 }
 
 #[command]
 async fn open_browser_devtools<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    #[cfg(debug_assertions)]
-    if let Some(window) = app.get_webview_window(&label) {
-        let _ = window.open_devtools();
+    if let Some(webview) = app.get_webview(&label) {
+        #[cfg(debug_assertions)]
+        {
+            webview.open_devtools();
+        }
+        
+        let _ = webview.eval("if (window.eruda) { eruda.show() } else { console.log('DevTools requested'); }");
     }
     Ok(())
 }
@@ -212,16 +220,16 @@ async fn get_app_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
 
 #[command]
 async fn webview_go_back<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.eval("history.back()").map_err(|e: tauri::Error| e.to_string())?;
+    if let Some(webview) = app.get_webview(&label) {
+        webview.eval("history.back()").map_err(|e: tauri::Error| e.to_string())?;
     }
     Ok(())
 }
 
 #[command]
 async fn webview_go_forward<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.eval("history.forward()").map_err(|e: tauri::Error| e.to_string())?;
+    if let Some(webview) = app.get_webview(&label) {
+        webview.eval("history.forward()").map_err(|e: tauri::Error| e.to_string())?;
     }
     Ok(())
 }
