@@ -22,7 +22,9 @@ Queste immagini provengono dalla finestra dell'app Windows, con profilo di test 
 
 ## Download di sviluppo: installer, portable e APK
 
-Aprire [GitHub Actions → Build Windows installer and Android APK](https://github.com/CosmoNetinfo/cosmonet-browser/actions/workflows/build-apps.yml), scegliere un'esecuzione **riuscita** e scorrere fino ad **Artifacts**:
+La **[release v0.3.0](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.0)** contiene installer Windows, portable, APK Android, guida di installazione e `SHA256SUMS`. È una pre-release di sviluppo. Le [note dettagliate](docs/releases/v0.3.0.md) riportano requisiti, verifiche e limiti. I file pubblicati nella release restano disponibili oltre la scadenza degli artefatti Actions.
+
+Per le build successive aprire [GitHub Actions → Build Windows installer and Android APK](https://github.com/CosmoNetinfo/cosmonet-browser/actions/workflows/build-apps.yml), scegliere un'esecuzione **riuscita** e scorrere fino ad **Artifacts**:
 
 | Artefatto | Contenuto | Note |
 | --- | --- | --- |
