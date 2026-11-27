@@ -1,6 +1,6 @@
 [package]
 name = "cosmo-browser"
-version = "0.3.0"
+version = "0.3.1"
 description = "Cosmo Browser: Tauri, Rust and native WebViews"
 authors = ["CosmoNet"]
 edition = "2021"
@@ -25,6 +25,9 @@ url = "2"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Memory"] }
 windows-core = "0.62"
 webview2-com = "0.39"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "native-tls"] }
+sha2 = "0.11"
+semver = "1"
 
 [profile.release]
 opt-level = "s"

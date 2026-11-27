@@ -1,0 +1,41 @@
+[hidden]{display:none!important}
+button,input,select{touch-action:manipulation}
+.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--muted);margin:0 0 8px}
+#settings{width:min(720px,94vw);padding:0;max-height:90dvh}
+.settings-top{position:sticky;top:0;padding:24px 28px;background:var(--surface);border-bottom:1px solid var(--line);z-index:1}
+.settings-top button{min-width:44px;min-height:44px}
+.settings-body{padding:0 28px 24px}
+.settings-body section{padding:22px 0;border-bottom:1px solid var(--line)}
+.settings-body h3{font-size:16px;margin:0 0 16px;font-weight:600}
+.settings-body label{font-size:14px}
+.settings-body select{min-height:48px;font-size:16px}
+.settings-body .subtle{font-size:13px}
+dialog .switch-row{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:48px;margin:12px 0}
+.switch-row small{display:block;font-size:12px;color:var(--muted);margin-top:5px}
+dialog input[type=checkbox]{width:24px;height:24px;flex-shrink:0;accent-color:var(--accent)}
+.settings-action{display:block;width:100%;min-height:48px;text-align:left;border:1px solid var(--line);margin:10px 0;font-size:14px}
+#settings-status{font-size:13px;color:var(--muted);min-height:20px}
+@media(max-width:600px){
+ :root{font-size:16px}
+ #chrome{grid-template-columns:minmax(0,1fr) 48px;grid-template-rows:48px 60px 2px}
+ #tabs{padding-top:4px;scrollbar-width:none}
+ .tab{min-width:140px;max-width:240px;padding:0 4px 0 12px;gap:4px}
+ .tab .title{font-size:13px}
+ .tab button{min-width:40px;min-height:40px}
+ #new-tab{font-size:24px;min-height:44px}
+ nav{gap:2px;padding:6px 4px}
+ nav button{min-width:44px;min-height:44px;padding:6px;font-size:22px}
+ #forward,#home,#bookmark{display:none}
+ #address{min-height:44px;padding:10px;font-size:16px;border-radius:10px}
+ footer{font-size:11px;min-height:22px}
+ dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:20px}
+ dialog button{min-height:44px}
+ dialog input,dialog select{font-size:16px;min-height:44px}
+ .heading button{min-width:44px}
+ .tool-grid{grid-template-columns:1fr 1fr;gap:8px;margin:20px 0}
+ .tool-grid button{font-size:14px;min-height:52px}
+ #settings{width:100%;max-width:100%;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0}
+ .settings-top{padding:20px;padding-top:calc(20px + env(safe-area-inset-top))}
+ .settings-body{padding:0 20px calc(24px + env(safe-area-inset-bottom))}
+ .list-item{flex-wrap:wrap}.list-item .item-label{min-width:100%;font-size:14px}
+}

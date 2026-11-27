@@ -7,6 +7,8 @@ use tauri::{AppHandle, Manager};
 mod desktop;
 #[cfg(windows)]
 mod vault;
+#[cfg(windows)]
+mod updates;
 
 #[derive(Default)]
 struct BrowserState(Mutex<HashSet<String>>);
@@ -81,6 +83,11 @@ fn profile_dir(app:&AppHandle)->Result<std::path::PathBuf,String> {
 #[tauri::command]
 async fn browser_command(webview: tauri::Webview, app: AppHandle, mut request: Request) -> Result<Value, String> {
     if !trusted_ui(&webview) { return Err("Comando consentito solo all'interfaccia locale".into()); }
+    #[cfg(windows)]
+    if matches!(request.action.as_str(),"update_check"|"update_download"|"update_install") {
+        let action=request.action.clone();
+        return tauri::async_runtime::spawn_blocking(move||updates::dispatch(&app,&action)).await.map_err(|_|"Aggiornamento non disponibile")?;
+    }
     if request.action=="smoke_finish" && smoke_mode() {
         let count=app.state::<BrowserState>().0.lock().map_err(|_|"Stato non disponibile")?.len();
         if count!=1 { return Err("Smoke test: numero schede inatteso".into()); }
@@ -97,7 +104,8 @@ async fn browser_command(webview: tauri::Webview, app: AppHandle, mut request: R
     #[cfg(target_os = "android")]
     {
         if matches!(request.action.as_str(), "create" | "navigate") && request.url == "home" {
-            request.data = json!({"html":include_str!("../../app/home.html")});
+            if !request.data.is_object() { request.data=json!({}); }
+            request.data["html"] = json!(include_str!("../../app/home.html"));
         }
         if request.action == "reader" {
             request.data = json!({"script":include_str!("../../modules/cosmonet-reader/reader.js")});
@@ -138,12 +146,14 @@ fn profile(app: &AppHandle, request: &Request) -> Result<Value, String> {
     fs::create_dir_all(&dir).map_err(|_| "Archivio non disponibile")?;
     let file = dir.join("browser-profile.json");
     if request.action == "profile_load" {
-        if !file.exists() { return Ok(json!({"theme":if smoke_mode(){std::env::var("COSMO_SMOKE_THEME").unwrap_or("system".into())}else{"system".into()},"bookmarks":[],"history":[],"smoke":smoke_mode(),"smokeUrl":smoke_url()})); }
+        if !file.exists() { return Ok(json!({"theme":if smoke_mode(){std::env::var("COSMO_SMOKE_THEME").unwrap_or("system".into())}else{"system".into()},"engine":"duckduckgo","siteMode":"mobile","rememberHistory":true,"platform":std::env::consts::OS,"version":env!("CARGO_PKG_VERSION"),"bookmarks":[],"history":[],"smoke":smoke_mode(),"smokeUrl":smoke_url()})); }
         if fs::metadata(&file).map_err(|_|"Profilo non disponibile")?.len()>2_000_000 { return Err("Profilo troppo grande".into()); }
         let mut result:Value=serde_json::from_slice(&fs::read(file).map_err(|_| "Lettura non riuscita")?).map_err(|_| "Profilo non valido")?;
         if !result.is_object() { return Err("Profilo non valido".into()); }
         result["smoke"]=json!(smoke_mode());
         result["smokeUrl"]=json!(smoke_url());
+        result["platform"]=json!(std::env::consts::OS);
+        result["version"]=json!(env!("CARGO_PKG_VERSION"));
         if smoke_mode() { if let Ok(theme)=std::env::var("COSMO_SMOKE_THEME") { result["theme"]=json!(theme); } }
         return Ok(result);
     }
@@ -157,7 +167,13 @@ fn profile(app: &AppHandle, request: &Request) -> Result<Value, String> {
             Some(json!({"url":url.as_str(),"title":title}))
         }).collect()).unwrap_or_default()
     };
-    let safe = json!({"theme":theme,"bookmarks":sanitize("bookmarks",500),"history":sanitize("history",1000)});
+    let engine=request.data.get("engine").and_then(Value::as_str).unwrap_or("duckduckgo");
+    if !["duckduckgo","google","bing"].contains(&engine) { return Err("Motore di ricerca non valido".into()); }
+    let mode=request.data.get("siteMode").and_then(Value::as_str).unwrap_or("mobile");
+    if !["mobile","desktop"].contains(&mode) { return Err("Modalità sito non valida".into()); }
+    let remember=request.data.get("rememberHistory").and_then(Value::as_bool).unwrap_or(true);
+    let auto_updates=request.data.get("autoUpdates").and_then(Value::as_bool).unwrap_or(true);
+    let safe = json!({"theme":theme,"engine":engine,"siteMode":mode,"rememberHistory":remember,"autoUpdates":auto_updates,"bookmarks":sanitize("bookmarks",500),"history":sanitize("history",1000)});
     let bytes = serde_json::to_vec(&safe).map_err(|_| "Profilo non valido")?;
     let temporary = dir.join("browser-profile.tmp");
     fs::write(&temporary, bytes).map_err(|_| "Salvataggio non riuscito")?;

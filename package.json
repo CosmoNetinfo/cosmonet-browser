@@ -1,6 +1,6 @@
 {
   "name": "cosmo-browser",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Cosmo Browser: Tauri, Rust and native WebViews for Windows and Android",
   "author": "CosmoNet",
@@ -17,6 +17,7 @@
     "secrets:scan": "node tools/python.cjs tools/security-scan.py",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/extension-browser.cjs",
+    "test:ui": "node tests/browser-ui.cjs",
     "test:upstream": "node tools/python.cjs -m unittest discover -s tests -p test_*.py -v",
     "doctor": "node tools/python.cjs tools/chromium.py doctor",
     "extensions:pack": "node tools/python.cjs tools/package-extensions.py"

@@ -6,7 +6,7 @@
 
 Il progetto usa i motori già aggiornati dal sistema e **non compila un fork completo di Chromium**. Questo permette build sui runner standard gratuiti di GitHub Actions, senza server a pagamento o checkout del motore da 100 GB. I moduli CosmoNet sono componenti propri: non equivalgono al supporto completo delle estensioni Chrome.
 
-**Versione di sviluppo: 0.3.0.** GitHub Actions ha prodotto installer e portable Windows e un APK Android ARM64 firmato: [prima esecuzione completa riuscita](https://github.com/CosmoNetinfo/cosmonet-browser/actions/runs/46010993952), commit `4646147`. Windows ha superato il test con caricamento HTTP reale, indietro/avanti e gestione delle schede. L'APK scaricato ha superato la verifica locale di checksum, firma e identità del pacchetto; il collaudo su telefono o emulatore è ancora da effettuare. Per le revisioni successive consultare sempre l'esito del relativo workflow.
+**Versione in preparazione: 0.3.1.** Introduce interfaccia mobile, Impostazioni e controllo degli aggiornamenti dalle release GitHub. La prima versione pubblicata è la [0.3.0](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.0): Windows ha superato il test con caricamento HTTP reale, indietro/avanti e gestione delle schede; l'APK scaricato ha superato la verifica di checksum, firma e identità. Il primo avvio su telefono è stato confermato dall'utente. Il collaudo completo delle nuove funzioni Android resta da effettuare. Per ogni revisione consultare l'esito del workflow e le note della release.
 
 ## Schermate reali
 
@@ -47,6 +47,8 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 | Barra indirizzi e ricerca | Navigazione, ricerca DuckDuckGo, URL e titolo aggiornati dal motore | Indietro/avanti nativi, ricarica e home |
 | Preferiti e cronologia | Memorizzazione locale, apertura e cancellazione | Nessun account cloud del browser |
 | Temi | Sistema, chiaro, scuro e sabbia | Interfaccia e home; i siti mantengono il proprio aspetto |
+| Impostazioni | Tema, motore di ricerca, cronologia, password e aggiornamenti | Preferenze salvate sul dispositivo |
+| Mobile Android | Viewport mobile, controlli touch e modalità sito desktop per scheda | La modalità predefinita delle nuove schede è configurabile |
 | Logo e favicon Cosmo Browser | C orbitale nei colori CosmoNet, icone PNG e ICO | Integrati nell'app e nelle risorse Android |
 | Password Windows | Archivio cifrato con DPAPI, legato all'utente Windows | Test di cifratura, decifratura e rilevamento corruzione riusciti |
 | Password Android | AES-256-GCM con chiave Android Keystore; backup app disabilitato | Implementato, da collaudare sul dispositivo |
@@ -55,7 +57,7 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 | Debug | DevTools nativi Windows e console Eruda inclusa localmente | Niente caricamento della console da CDN |
 | Download Android | DownloadManager, cartella download dell'app | Da verificare su telefono; nessuna esecuzione automatica dei file |
 | Installer e APK | Workflow su runner GitHub standard | Prima build completa riuscita; firma APK e checksum verificati |
-| Aggiornamenti del browser | Non ancora implementati | Installazione manuale delle build di sviluppo |
+| Aggiornamenti del browser | Controllo all'avvio o manuale, download verificato e apertura installer | Introdotti dalla 0.3.1; conferma Android obbligatoria |
 | Versione Linux | Rimandata | Ubuntu in Actions serve solo come macchina di compilazione Android |
 
 ### Leggerezza, RAM e tempi di avvio
@@ -68,7 +70,17 @@ La dimensione dell'eseguibile non misura la RAM: ogni scheda può usare processi
 
 ### Compatibilità dei siti
 
-La navigazione avviene in viste native, quindi non dipende dal permesso di un sito di essere caricato in un iframe. Questo evita i limiti degli iframe, ma **non garantisce un “bypass totale”**: alcuni accessi Google/OAuth, contenuti DRM e servizi possono rifiutare browser incorporati. Non vengono falsificati user agent o header e non vengono disabilitate sandbox, controlli TLS o sicurezza web per aggirare quei limiti.
+La navigazione avviene in viste native, quindi non dipende dal permesso di un sito di essere caricato in un iframe. Questo evita i limiti degli iframe, ma **non garantisce un “bypass totale”**: alcuni accessi Google/OAuth, contenuti DRM e servizi possono rifiutare browser incorporati. Android usa normalmente lo user agent WebView del dispositivo; l'opzione esplicita “Sito desktop” richiede la variante desktop cambiando lo user agent della scheda. Sandbox, controlli TLS e sicurezza web restano attivi.
+
+### Aggiornamenti dalla 0.3.1
+
+Aprire **Menu → Impostazioni → Aggiornamenti**. Il controllo all'avvio è attivo per impostazione predefinita e si può disattivare. Contatta l'API pubblica GitHub, senza inviare password, cronologia o preferiti, e include le pre-release pubblicate con una versione numerica superiore e un pacchetto per la propria piattaforma. Il download parte su clic, non in background.
+
+Il componente nativo accetta solo pacchetti della repository CosmoNetinfo/cosmonet-browser, con nome previsto, dimensione limitata e digest SHA-256 pubblicato da GitHub. Rifiuta versioni uguali o inferiori. Android verifica anche identità del pacchetto, versionCode e certificato uguale a quello dell'app installata. L'APK passa all'installer tramite un FileProvider limitato alla cartella privata degli aggiornamenti.
+
+Su Android occorre confermare l'installazione nella schermata di sistema; se necessario autorizzare Cosmo Browser come sorgente, poi tornare e premere di nuovo **Installa aggiornamento**. La 0.3.0 non include il controllo: **la prima installazione della 0.3.1 deve essere manuale**, sopra l'app esistente e con la stessa firma, senza disinstallare per conservare i dati. Su Windows l'azione chiude il browser e avvia l'installer, anche se si sta usando la portable; non sostituisce silenziosamente l'eseguibile portable.
+
+Il runtime WebView2/Android WebView continua ad aggiornarsi tramite il sistema: è distinto dalle release dell'app Cosmo Browser. Il flusso UI è verificato con un ponte nativo simulato; l'installazione completa su Android richiede ancora collaudo sul dispositivo.
 
 ## Password e sicurezza
 

@@ -6,6 +6,8 @@ let active = null;
 let profile = {theme:'system',bookmarks:[],history:[]};
 let saves = Promise.resolve();
 let nativePages=0;
+let android=false;
+let updateBusy=false;
 const native = (action, extra = {}) => window.__TAURI__.core.invoke('browser_command', {
   request:{action,label:active ?? '',url:'',data:null,...extra}
 });
@@ -16,7 +18,7 @@ function bounds() {
 }
 function saveProfile() {
   const snapshot=structuredClone(profile);
-  saves=saves.catch(()=>{}).then(()=>native('profile_save',{data:snapshot})).catch(()=>report('Impossibile salvare le preferenze sul dispositivo.'));
+  saves=saves.catch(()=>{}).then(()=>native('profile_save',{data:snapshot})).then(()=>true).catch(()=>{report('Impossibile salvare le preferenze sul dispositivo.');return false;});
   return saves;
 }
 function renderTabs() {
@@ -40,6 +42,7 @@ function renderNavigation() {
   $('progress').classList.toggle('loading',!!tab.loading);
   $('security').textContent=tab.url.startsWith('https://')?'HTTPS':tab.url.startsWith('http://')?'HTTP · non cifrato':'';
   $('bookmark').textContent=profile.bookmarks.some(b=>b.url===tab.url)?'★':'☆';
+  $('desktop-site').checked=!!tab.desktop;
 }
 async function activate(label) {
   if(!tabs.has(label))return;
@@ -50,8 +53,9 @@ async function activate(label) {
 async function createTab(url='home') {
   if(tabs.size>=32)return report('Puoi aprire fino a 32 schede.');
   const label=`tab-${crypto.randomUUID()}`;
-  tabs.set(label,{url,title:url==='home'?'Nuova scheda':'Caricamento…',back:false,forward:false,loading:false});renderTabs();
-  try {await native('create',{label,url,bounds:bounds()});await activate(label);}
+  const desktop=android&&profile.siteMode==='desktop';
+  tabs.set(label,{url,title:url==='home'?'Nuova scheda':'Caricamento…',back:false,forward:false,loading:false,desktop});renderTabs();
+  try {await native('create',{label,url,bounds:bounds(),data:{desktop}});await activate(label);}
   catch(error){tabs.delete(label);renderTabs();throw error;}
 }
 async function closeTab(label) {
@@ -61,17 +65,17 @@ async function closeTab(label) {
 }
 async function navigate(input) {
   const value=String(input).trim();if(!value)return;
-  const url=value==='home'?'home':safeWebUrl(value)??searchUrl(value,'duckduckgo');
+  const url=value==='home'?'home':safeWebUrl(value)??searchUrl(value,profile.engine);
   if(!active)return createTab(url);
   await native('navigate',{url});
 }
 function event(data) {
   if(data.newTab){const url=safeWebUrl(data.newTab);if(url)createTab(url).catch(report);return;}
   const tab=tabs.get(data.label);if(!tab)return;
-  if(typeof data.url==='string'&&data.url){tab.url=/^(tauri:|https?:\/\/tauri\.localhost|https:\/\/home\.cosmo\.local)/.test(data.url)?'home':data.url;}
+  if(typeof data.url==='string'&&data.url){tab.url=data.url==='about:blank'&&tab.url==='home'?'home':/^(tauri:|https?:\/\/tauri\.localhost|https:\/\/home\.cosmo\.local)/.test(data.url)?'home':data.url;}
   if(typeof data.title==='string'&&data.title)tab.title=data.title.slice(0,256);
-  for(const key of ['back','forward','loading'])if(typeof data[key]==='boolean')tab[key]=data[key];
-  if(data.loading===false&&safeWebUrl(tab.url)){
+  for(const key of ['back','forward','loading','desktop'])if(typeof data[key]==='boolean')tab[key]=data[key];
+  if(data.loading===false&&profile.rememberHistory&&tab.url!=='home'&&safeWebUrl(tab.url)){
     profile.history= [{url:tab.url,title:tab.title},...profile.history.filter(item=>item.url!==tab.url)].slice(0,1000);saveProfile();
   }
   if(data.loading===false)nativePages++;
@@ -121,6 +125,18 @@ $('menu').onclick=()=>openDialog('tools').catch(report);
 $('show-bookmarks').onclick=()=>showList('bookmarks').catch(report);
 $('show-history').onclick=()=>showList('history').catch(report);
 $('show-vault').onclick=()=>showVault().catch(report);
+$('show-settings').onclick=()=>openDialog('settings').catch(report);
+$('open-update-settings').onclick=()=>openDialog('settings').then(()=>$('check-updates').scrollIntoView({block:'center'})).catch(report);
+$('settings-vault').onclick=()=>showVault().catch(report);
+$('menu-forward').onclick=()=>native('forward').then(()=>$('tools').close()).catch(report);
+$('menu-home').onclick=()=>navigate('home').then(()=>$('tools').close()).catch(report);
+$('menu-bookmark').onclick=()=>{$('bookmark').click();$('tools').close();};
+$('desktop-site').onchange=async()=>{
+  const tab=tabs.get(active);if(!tab)return;
+  const desktop=$('desktop-site').checked;
+  try{await native('site_mode',{data:{desktop}});tab.desktop=desktop;$('tools').close();renderNavigation();}
+  catch(error){$('desktop-site').checked=tab.desktop;report(error);}
+};
 $('reader').onclick=()=>native('reader').then(()=>$('tools').close()).catch(error=>{report(error);$('tools').close();});
 $('devtools').onclick=()=>native('devtools').then(()=>$('tools').close()).catch(report);
 $('console').onclick=()=>native('console').then(()=>$('tools').close()).catch(report);
@@ -131,7 +147,53 @@ $('bookmark').onclick=()=>{
   saveProfile();renderNavigation();
 };
 $('clear-history').onclick=()=>{if(confirm('Svuotare la cronologia locale?')){profile.history=[];saveProfile();showList('history').catch(report);}};
-$('theme').onchange=()=>{profile.theme=$('theme').value;document.documentElement.dataset.theme=profile.theme;saveProfile();if(active)native('theme',{data:{theme:profile.theme}}).catch(()=>{});};
+$('theme').onchange=()=>{profile.theme=$('theme').value;document.documentElement.dataset.theme=profile.theme;saveSetting();for(const label of tabs.keys())native('theme',{label,data:{theme:profile.theme}}).catch(()=>{});};
+async function saveSetting(){
+  $('settings-status').textContent='Salvataggio…';
+  const saved=await saveProfile();$('settings-status').textContent=saved?'Preferenze salvate sul dispositivo.':'Salvataggio non riuscito. Riprova.';
+  return saved;
+}
+$('search-engine').onchange=()=>{profile.engine=$('search-engine').value;saveSetting();};
+$('site-mode').onchange=()=>{profile.siteMode=$('site-mode').value;saveSetting();};
+$('remember-history').onchange=()=>{profile.rememberHistory=$('remember-history').checked;saveSetting();};
+$('auto-updates').onchange=()=>{profile.autoUpdates=$('auto-updates').checked;saveSetting();};
+function updateButtons(busy){
+  updateBusy=busy;
+  for(const id of ['check-updates','download-update','install-update'])$(id).disabled=busy;
+}
+async function checkUpdates(automatic=false){
+  if(updateBusy)return;updateButtons(true);
+  $('update-status').textContent='Ricerca di nuove release…';
+  try{
+    const result=await native('update_check');
+    $('download-update').hidden=!result.available||result.ready;
+    $('install-update').hidden=!result.ready;
+    $('download-update').textContent=`Scarica Cosmo Browser ${result.version}`;
+    $('update-status').textContent=result.available?`Disponibile Cosmo Browser ${result.version}.`:'Stai usando la versione più recente disponibile per questo dispositivo.';
+    if(automatic&&result.available){
+      $('update-notice-text').textContent=`È disponibile Cosmo Browser ${result.version}. Puoi scaricarlo dalle Impostazioni.`;
+      if(!document.querySelector('dialog[open]'))await openDialog('update-notice');
+      else report(`Cosmo Browser ${result.version} disponibile nelle Impostazioni.`);
+    }
+  }catch(error){$('update-status').textContent=String(error);}
+  finally{updateButtons(false);}
+}
+$('check-updates').onclick=()=>checkUpdates();
+$('download-update').onclick=async()=>{
+  if(updateBusy)return;updateButtons(true);$('update-status').textContent='Download e verifica dell’aggiornamento…';
+  try{const result=await native('update_download');if(!result.ready)throw Error('Verifica del pacchetto non riuscita.');$('download-update').hidden=true;$('install-update').hidden=false;$('update-status').textContent=`Cosmo Browser ${result.version} verificato e pronto da installare.`;}
+  catch(error){$('update-status').textContent=String(error);}
+  finally{updateButtons(false);}
+};
+$('install-update').onclick=async()=>{
+  if(updateBusy)return;updateButtons(true);
+  try{const result=await native('update_install');$('update-status').textContent=result.permissionRequired?'Autorizza Cosmo Browser nelle impostazioni Android, poi torna qui e premi di nuovo Installa.':'Conferma l’aggiornamento nella schermata di sistema.';}
+  catch(error){$('update-status').textContent=String(error);}
+  finally{updateButtons(false);}
+};
+$('settings-clear-history').onclick=async()=>{
+  if(confirm('Cancellare la cronologia salvata su questo dispositivo?')){profile.history=[];if(await saveSetting())$('settings-status').textContent='Cronologia cancellata. Preferiti e password conservati.';}
+};
 $('vault-form').onsubmit=async event=>{
   event.preventDefault();
   try {await native('vault_save',{data:{user:$('vault-user').value,secret:$('vault-secret').value}});$('vault-form').reset();await showVault();$('vault-status').textContent='Accesso cifrato e salvato sul dispositivo.';}
@@ -157,9 +219,18 @@ try {
   if(!window.__TAURI__)throw Error('Avvia questa interfaccia dall’app Cosmo Browser.');
   await window.__TAURI__.event.listen('browser-event',e=>event(e.payload));
   const saved=await native('profile_load');
-  profile={theme:['system','light','dark','sand'].includes(saved.theme)?saved.theme:'system',bookmarks:Array.isArray(saved.bookmarks)?saved.bookmarks:[],history:Array.isArray(saved.history)?saved.history:[]};
+  android=saved.platform==='android';
+  profile={theme:['system','light','dark','sand'].includes(saved.theme)?saved.theme:'system',engine:['duckduckgo','google','bing'].includes(saved.engine)?saved.engine:'duckduckgo',siteMode:saved.siteMode==='desktop'?'desktop':'mobile',rememberHistory:saved.rememberHistory!==false,autoUpdates:saved.autoUpdates!==false,bookmarks:Array.isArray(saved.bookmarks)?saved.bookmarks:[],history:Array.isArray(saved.history)?saved.history:[]};
   document.documentElement.dataset.theme=profile.theme;$('theme').value=profile.theme;
+  $('search-engine').value=profile.engine;$('site-mode').value=profile.siteMode;$('remember-history').checked=profile.rememberHistory;
+  $('desktop-row').hidden=!android;$('default-mode-row').hidden=!android;
+  $('app-version').textContent=`Cosmo Browser ${saved.version??'0.3.1'}`;
+  $('runtime-info').textContent=android?'Android WebView · modalità mobile predefinita. Mantieni aggiornato il motore WebView dal sistema.':'Microsoft WebView2 · mantieni aggiornato il runtime dal sistema.';
+  $('auto-updates').checked=profile.autoUpdates;
+  $('install-update').textContent=android?'Installa aggiornamento':'Chiudi Cosmo Browser e avvia installer';
+  $('update-help').textContent+=android?' Android richiede la tua conferma e può chiedere l’autorizzazione per installare da Cosmo Browser.':' Su Windows viene avviato l’installer, anche quando stai usando la portable.';
   await createTab();report('Cosmo Browser · pronto');
+  if(!saved.smoke&&profile.autoUpdates)setTimeout(()=>checkUpdates(true),2500);
   if(saved.smoke){
     const first=active;
     const waitLoaded=async()=>{const until=Date.now()+20000;while(nativePages<1&&Date.now()<until)await new Promise(r=>setTimeout(r,100));if(nativePages<1)throw Error('Nessun caricamento nativo osservato');};

@@ -37,11 +37,16 @@ import org.json.JSONObject
 class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
     private lateinit var toolbar: WebView
     private val tabs = mutableMapOf<String, WebView>()
+    private val homeTabs = mutableSetOf<String>()
+    private val desktopTabs = mutableSetOf<String>()
+    private val updates by lazy { BrowserUpdates(activity) }
     private val keyAlias = "info.cosmonet.browser.vault.v1"
     private val vaultFile by lazy { AtomicFile(File(activity.filesDir, "cosmo-vault.aes")) }
 
     override fun load(webView: WebView) {
         toolbar = webView
+        toolbar.settings.useWideViewPort = true
+        toolbar.settings.loadWithOverviewMode = false
         toolbar.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         (activity as? ComponentActivity)?.onBackPressedDispatcher?.addCallback(object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -63,7 +68,8 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     private fun update(label: String, view: WebView, loading: Boolean? = null) {
-        val data = JSONObject().put("url", view.url ?: "").put("title", view.title ?: "Scheda")
+        val data = JSONObject().put("url", if (label in homeTabs) "home" else view.url ?: "")
+            .put("desktop", label in desktopTabs).put("title", view.title ?: "Scheda")
             .put("back", view.canGoBack()).put("forward", view.canGoForward())
         if (loading != null) data.put("loading", loading)
         emit(label, data)
@@ -92,6 +98,19 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
         view.layoutParams = params
     }
 
+    private fun siteMode(label: String, view: WebView, desktop: Boolean) {
+        val mobileAgent = WebSettings.getDefaultUserAgent(activity)
+        if (desktop) desktopTabs.add(label) else desktopTabs.remove(label)
+        view.settings.userAgentString = if (desktop) mobileAgent
+            .replace(Regex("Linux; Android[^)]*"), "X11; Linux x86_64")
+            .replace(" Mobile", "") else mobileAgent
+        view.settings.useWideViewPort = true
+        view.settings.loadWithOverviewMode = true
+        view.settings.setSupportZoom(true)
+        view.settings.builtInZoomControls = true
+        view.settings.displayZoomControls = false
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun create(label: String, box: JSONObject): WebView {
         require(::toolbar.isInitialized && !tabs.containsKey(label) && tabs.size < 32)
@@ -116,7 +135,10 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return try { webUrl(request.url.toString()); false } catch (_: Exception) { true }
             }
-            override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) { update(label, view, true) }
+            override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                if (url != null && url != "about:blank" && !url.startsWith("https://home.cosmo.local/")) homeTabs.remove(label)
+                update(label, view, true)
+            }
             override fun onPageFinished(view: WebView, url: String?) { update(label, view, false) }
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) { update(label, view) }
             override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
@@ -232,10 +254,15 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
             try {
                 val action = args.getString("action"); val label = args.getString("label")
                 val data = args.optJSONObject("data") ?: JSONObject()
+                if (action in listOf("update_check", "update_download", "update_install")) { updates.dispatch(action,invoke);return@runOnUiThread }
                 if (action == "create") {
                     val view = create(label, args.getJSONObject("bounds"))
+                    siteMode(label, view, data.optBoolean("desktop", false))
                     val url = args.getString("url")
-                    if (url == "home") view.loadDataWithBaseURL("https://home.cosmo.local/", data.getString("html"), "text/html", "UTF-8", null)
+                    if (url == "home") {
+                        homeTabs.add(label)
+                        view.loadDataWithBaseURL("https://home.cosmo.local/", data.getString("html"), "text/html", "UTF-8", "https://home.cosmo.local/")
+                    }
                     else view.loadUrl(webUrl(url).toString())
                     invoke.resolve(JSObject()); return@runOnUiThread
                 }
@@ -245,14 +272,18 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
                     "activate" -> tabs.forEach { (key, value) -> value.visibility = if (key == label) View.VISIBLE else View.GONE }
                     "hide" -> view.visibility = View.GONE
                     "bounds" -> bounds(view, args.getJSONObject("bounds"))
-                    "navigate" -> if (args.getString("url") == "home") view.loadDataWithBaseURL("https://home.cosmo.local/", data.getString("html"), "text/html", "UTF-8", null) else view.loadUrl(webUrl(args.getString("url")).toString())
+                    "navigate" -> if (args.getString("url") == "home") {
+                        homeTabs.add(label)
+                        view.loadDataWithBaseURL("https://home.cosmo.local/", data.getString("html"), "text/html", "UTF-8", "https://home.cosmo.local/")
+                    } else { homeTabs.remove(label); view.loadUrl(webUrl(args.getString("url")).toString()) }
+                    "site_mode" -> { siteMode(label, view, data.getBoolean("desktop")); if (label !in homeTabs) view.reload() }
                     "back" -> if (view.canGoBack()) view.goBack()
                     "forward" -> if (view.canGoForward()) view.goForward()
                     "reload" -> view.reload()
-                    "close" -> { (view.parent as ViewGroup).removeView(view); view.destroy(); tabs.remove(label) }
+                    "close" -> { (view.parent as ViewGroup).removeView(view); view.destroy(); tabs.remove(label); homeTabs.remove(label); desktopTabs.remove(label) }
                     "devtools", "console" -> view.evaluateJavascript(data.getString("script"), null)
                     "theme" -> {
-                        if ((view.url ?: "").startsWith("https://home.cosmo.local/")) {
+                        if (label in homeTabs) {
                             val theme=data.optString("theme", "system")
                             require(theme in listOf("system", "light", "dark", "sand"))
                             view.evaluateJavascript("document.documentElement.dataset.theme=${JSONObject.quote(theme)};",null)
@@ -270,5 +301,5 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
-    override fun onDestroy() { tabs.values.forEach { it.destroy() }; tabs.clear() }
+    override fun onDestroy() { tabs.values.forEach { it.destroy() }; tabs.clear();updates.close() }
 }
