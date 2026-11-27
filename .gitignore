@@ -1,5 +1,10 @@
 # Dependencies
 node_modules/
+.work/
+__pycache__/
+*.pyc
+test-results/
+playwright-report/
 
 # Build output
 dist/

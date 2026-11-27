@@ -1,0 +1,31 @@
+{
+  "version": "159.0.8154.34",
+  "revision": "4deb883708d3d25100c5aac2148aafc95dae95ac",
+  "repository": "https://chromium.googlesource.com/chromium/src.git",
+  "files": {
+    "chrome/VERSION": "1e4cd12af0e2d78de667874f66244afa8bd6f6dfa8bcab0cf36dffdee8cc86ca",
+    "chrome/app/theme/chromium/BRANDING": "15ac20cb8744ebac0815961059231baefa71fd4ed3023cb2094aaf8a34ae423b",
+    "chrome/app/theme/chromium/product_logo_16.png": "a393eac540413ebbc51ba033b96d6f87918d1039f1ec16cd8c0e6a57818f2ea1",
+    "chrome/app/theme/chromium/product_logo_24.png": "7a431699c78af352352932f6dd4e04848b57990c0a5675a66695e1dd454cb592",
+    "chrome/app/theme/chromium/product_logo_48.png": "008be542c4ee081c28461e5f6e8a133ce6abb1e2c0998dee414f2db44a6d9c91",
+    "chrome/app/theme/chromium/product_logo_64.png": "aa7f129dcfe02276ebd365781c6a0c3c8ab1ca41abf3408ca47e604e7fe12018",
+    "chrome/app/theme/chromium/product_logo_128.png": "ea2d5a7c15ae1e03138d2bb227d3ed4684808c7de10a1443d776cde3ca3dcd9d",
+    "chrome/app/theme/chromium/product_logo_256.png": "e14120fdefb8eb455f44eac572f34bda75c32c9404e5c3745d44793dae217331",
+    "chrome/app/theme/chromium/win/chromium.ico": "cd3c4557f730ec73624196e020e36064d41d660228e6048eca298cd8410f81f6",
+    "chrome/app/chromium_strings.grd": "c270ada903ecc0029a2a87522a24dc663c09f7954252b10f60de1781dffd7ae5",
+    "chrome/common/chrome_paths_linux.cc": "a3adc0c07581812d76331e100ff02ff8cd58140c87fe8c475cf0d3e9f728403b",
+    "chrome/browser/sync/BUILD.gn": "ef8679f3707f45d4da20eeb85c0ea1190427021e304c1baa8a7a70a10ede2e49",
+    "chrome/browser/sync/sync_service_factory.cc": "fd6fabcf5cd7338a261b27c1a542eecae8a002d4c589ade120531efe010f347c",
+    "chrome/install_static/chromium_install_modes.h": "f1e173ce85627969b995e1844a9260d31aef8f4b27ccdca9ac728b60c4f23cd1",
+    "components/sync/base/command_line_switches.cc": "bbe97cc742248b21aec7a294834ad40af9d49b26eae0256ec2fd3a262cf6320a",
+    "chrome/browser/password_manager/factories/account_password_store_factory.cc": "7c105934370d565811481950a6167d6707a988202be5885da8916f0a227db75e",
+    "chrome/browser/password_manager/factories/profile_password_store_factory.cc": "c83d57747c5f3a0eaf51fd63db883f0d21d1e0a8811526efdb91a77027b94e48",
+    "components/sync/service/sync_service_impl.cc": "439e8e204743ca000b97c3b25ee549ae1eb2577790bf5e60325edcbf3eff372c",
+    "chrome/android/BUILD.gn": "24c416c06cecc21aadfac2ecd6228648f3e874cfbbe171d3dc2a2a48b4b45691",
+    "chrome/android/chrome_public_apk_tmpl.gni": "b46ba22bb583fd7cb88c14f9b0ff4053cdf3e20cac56889f46024decab487d6b",
+    "chrome/browser/password_manager/factories/password_store_backend_factory.cc": "4fc2eecddcaf6384aa55e2ecaf8efbf00bf7076473bad26480fc7d2bef041a1f",
+    "chrome/android/java/AndroidManifest.xml": "cb4e43f8ac5f258f1f615c636998263939dd30131574cb7dfce0c1b3f631a0ed",
+    "build/config/chrome_build.gni": "09a98267376b69f27d8ec983c9a070ffb52c80660e39b68fd9c1853a3e38314d"
+  },
+  "depot_tools_revision": "2e69d2953ddf4a4c671c701773991ff68475db00"
+}

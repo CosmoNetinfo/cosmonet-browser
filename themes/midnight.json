@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Cosmo · Notte",
+  "version": "0.1.0",
+  "description": "Tema scuro Cosmo Browser.",
+  "theme": { "colors": {
+    "frame": [19, 27, 23], "toolbar": [35, 46, 39],
+    "tab_text": [237, 241, 233], "tab_background_text": [189, 202, 192],
+    "bookmark_text": [237, 241, 233], "ntp_background": [23, 32, 28],
+    "ntp_text": [237, 241, 233], "button_background": [83, 105, 78]
+  } }
+}

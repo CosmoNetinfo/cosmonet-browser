@@ -1,0 +1,45 @@
+name: Chromium development build (self-hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        required: true
+        options: [windows-x64, linux-x64, android-arm64]
+      workspace:
+        description: 'Dedicated workspace outside this repository, e.g. V:/cb or /srv/cosmo-build'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chromium-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Chromium exceeds normal hosted-runner disk budgets. No pull_request trigger:
+    # untrusted PR code must never execute on the dedicated build machine.
+    runs-on: [self-hosted, cosmo-chromium, "${{ inputs.target == 'windows-x64' && 'Windows' || 'Linux' }}"]
+    timeout-minutes: 1440
+    env:
+      COSMO_TARGET: ${{ inputs.target }}
+      COSMO_WORKSPACE: ${{ inputs.workspace }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check host before downloads
+        run: node tools/python.cjs tools/chromium.py doctor --target "$COSMO_TARGET" --workspace "$COSMO_WORKSPACE"
+      - name: Sync locked sources and dependencies
+        run: node tools/python.cjs tools/chromium.py sync --target "$COSMO_TARGET" --workspace "$COSMO_WORKSPACE"
+      - name: Apply overlays and generate build
+        run: node tools/python.cjs tools/chromium.py configure --target "$COSMO_TARGET" --workspace "$COSMO_WORKSPACE"
+      - name: Compile development browser
+        run: node tools/python.cjs tools/chromium.py build --target "$COSMO_TARGET" --workspace "$COSMO_WORKSPACE"
+      # No automatic publication: native packaging and platform acceptance tests
+      # must be completed before installers/APKs can be called a release.

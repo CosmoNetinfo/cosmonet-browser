@@ -1,82 +1,21 @@
 {
-  "name": "cosmonet-browser",
-  "version": "1.2.1",
-  "description": "Browser personalizzato per cosmonet.info",
-  "main": "src-web/main.js",
-  "scripts": {
-    "start": "electron .",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri": "tauri",
-    "build": "electron-builder"
-  },
-  "keywords": [
-    "browser",
-    "cosmonet",
-    "electron"
-  ],
-  "author": "Cosmonet.info",
+  "name": "cosmo-browser",
+  "version": "0.2.0-dev",
+  "private": true,
+  "description": "Cosmo Browser: Chromium downstream for Windows, Linux and Android",
+  "author": "CosmoNet",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/extension-browser.cjs",
+    "test:upstream": "node tools/python.cjs -m unittest discover -s tests -p test_*.py -v",
+    "doctor": "node tools/python.cjs tools/chromium.py doctor",
+    "extensions:pack": "node tools/python.cjs tools/package-extensions.py"
+  },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.0",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
-  },
-  "build": {
-    "appId": "info.cosmonet.browser",
-    "productName": "Cosmonet Browser",
-    "directories": {
-      "output": "dist"
-    },
-    "asar": true,
-    "files": [
-      "**/*",
-      "!dist",
-      "!android",
-      "!node_modules/@capacitor",
-      "!www",
-      "assets/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "shortcutName": "Cosmonet Browser"
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "icon": "assets/icon.png"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "assets/icon.png"
-    }
-  },
-  "dependencies": {
-    "@capacitor/android": "^8.1.0",
-    "@capacitor/cli": "^8.1.0",
-    "@capacitor/core": "^8.1.0"
+    "playwright": "1.65.1"
   }
 }

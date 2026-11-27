@@ -1,0 +1,20 @@
+{
+  "name": "Cosmo Browser",
+  "slug": "cosmo-browser",
+  "vendor": "CosmoNet",
+  "version": "0.2.0-dev",
+  "androidPackage": "info.cosmonet.browser",
+  "platforms": {
+    "windows-x64": { "host": "Windows", "target": "chrome", "status": "source-preparation" },
+    "linux-x64": { "host": "Linux", "target": "chrome", "status": "source-preparation" },
+    "android-arm64": { "host": "Linux", "target": "chrome_public_apk", "status": "source-preparation" }
+  },
+  "privacy": {
+    "browserSync": false,
+    "accountPasswordStore": false,
+    "androidBackup": false,
+    "extensionStorage": "local",
+    "legacyPasswordImport": false
+  },
+  "distribution": { "price": 0, "salesEnabled": false, "publicReleaseReady": false }
+}

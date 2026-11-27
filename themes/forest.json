@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Cosmo · Foresta",
+  "version": "0.1.0",
+  "description": "Tema Cosmo Browser con colori verdi e toni chiari.",
+  "theme": { "colors": {
+    "frame": [226, 233, 221], "toolbar": [247, 248, 244],
+    "tab_text": [32, 43, 39], "tab_background_text": [59, 76, 61],
+    "bookmark_text": [32, 43, 39], "ntp_background": [247, 248, 244],
+    "ntp_text": [32, 43, 39], "button_background": [83, 105, 78]
+  } }
+}

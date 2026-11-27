@@ -1,0 +1,142 @@
+--- a/chrome/app/theme/chromium/BRANDING
++++ b/chrome/app/theme/chromium/BRANDING
+@@ -1,9 +1,9 @@
+-COMPANY_FULLNAME=The Chromium Authors
+-COMPANY_SHORTNAME=The Chromium Authors
+-PRODUCT_FULLNAME=Chromium
+-PRODUCT_SHORTNAME=Chromium
+-PRODUCT_INSTALLER_FULLNAME=Chromium Installer
+-PRODUCT_INSTALLER_SHORTNAME=Chromium Installer
++COMPANY_FULLNAME=CosmoNet
++COMPANY_SHORTNAME=CosmoNet
++PRODUCT_FULLNAME=Cosmo Browser
++PRODUCT_SHORTNAME=Cosmo Browser
++PRODUCT_INSTALLER_FULLNAME=Cosmo Browser Installer
++PRODUCT_INSTALLER_SHORTNAME=Cosmo Browser Installer
+ COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Chromium Authors. All rights reserved.
+ MAC_BUNDLE_ID=org.chromium.Chromium
+ MAC_CREATOR_CODE=Cr24
+--- a/chrome/app/chromium_strings.grd
++++ b/chrome/app/chromium_strings.grd
+@@ -294,10 +294,10 @@
+         </then>
+         <else>
+           <message name="IDS_PRODUCT_NAME" desc="The Chrome application name" translateable="false">
+-            Chromium
++            Cosmo Browser
+           </message>
+           <message name="IDS_SHORT_PRODUCT_NAME" desc="The Chrome application short name." translateable="false">
+-            Chromium
++            Cosmo Browser
+           </message>
+         </else>
+       </if>
+--- a/chrome/common/chrome_paths_linux.cc
++++ b/chrome/common/chrome_paths_linux.cc
+@@ -96,7 +96,7 @@
+ #elif BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   std::string data_dir_basename = "google-chrome";
+ #else
+-  std::string data_dir_basename = "chromium";
++  std::string data_dir_basename = "cosmo-browser";
+ #endif
+   // LINT.ThenChange(//chrome/installer/linux/snap/build.py:ConfigDirName)
+   *result = config_dir.Append(data_dir_basename + GetChannelSuffixForDataDir());
+--- a/chrome/install_static/chromium_install_modes.h
++++ b/chrome/install_static/chromium_install_modes.h
+@@ -21,7 +21,7 @@
+ 
+ // The brand-specific product name to be included as a component of the install
+ // and user data directory paths.
+-inline constexpr wchar_t kProductPathName[] = L"Chromium";
++inline constexpr wchar_t kProductPathName[] = L"CosmoBrowser";
+ 
+ // The brand-specific safe browsing client name.
+ inline constexpr char kSafeBrowsingName[] = "chromium";
+@@ -54,15 +54,15 @@
+         .logo_suffix = L"",  // No logo suffix for the primary install mode.
+         .app_guid =
+             L"",  // Empty app_guid since no integration with Google Update.
+-        .base_app_name = L"Chromium",              // A distinct base_app_name.
+-        .base_app_id = L"Chromium",                // A distinct base_app_id.
+-        .browser_prog_id_prefix = L"ChromiumHTM",  // Browser ProgID prefix.
++        .base_app_name = L"Cosmo Browser",              // A distinct base_app_name.
++        .base_app_id = L"CosmoBrowser",                // A distinct base_app_id.
++        .browser_prog_id_prefix = L"CosmoBrowserHTM",  // Browser ProgID prefix.
+         .browser_prog_id_description =
+-            L"Chromium HTML Document",  // Browser ProgID description.
+-        .direct_launch_url_scheme = "chromium",
+-        .pdf_prog_id_prefix = L"ChromiumPDF",  // PDF ProgID prefix.
++            L"Cosmo Browser HTML Document",  // Browser ProgID description.
++        .direct_launch_url_scheme = "cosmo-browser",
++        .pdf_prog_id_prefix = L"CosmoBrowserPDF",  // PDF ProgID prefix.
+         .pdf_prog_id_description =
+-            L"Chromium PDF Document",  // PDF ProgID description.
++            L"Cosmo Browser PDF Document",  // PDF ProgID description.
+         .active_setup_guid =
+             L"{7D2B3E1D-D096-4594-9D8F-A6667F12E0AC}",  // Active Setup
+                                                         // GUID.
+--- a/components/sync/base/command_line_switches.cc
++++ b/components/sync/base/command_line_switches.cc
+@@ -11,7 +11,8 @@
+ namespace syncer {
+ 
+ bool IsSyncAllowedByFlag() {
+-  return !base::CommandLine::ForCurrentProcess()->HasSwitch(kDisableSync);
++  // Cosmo Browser: browser data stays on this device.
++  return false;
+ }
+ 
+ }  // namespace syncer
+--- a/chrome/browser/password_manager/factories/account_password_store_factory.cc
++++ b/chrome/browser/password_manager/factories/account_password_store_factory.cc
+@@ -158,7 +158,8 @@
+ scoped_refptr<RefcountedKeyedService>
+ AccountPasswordStoreFactory::BuildServiceInstanceFor(
+     content::BrowserContext* context) const {
+-  return BuildPasswordStore(context);
++  // Cosmo Browser: never create an account-backed password store.
++  return nullptr;
+ }
+ 
+ bool AccountPasswordStoreFactory::ServiceIsNULLWhileTesting() const {
+--- a/chrome/browser/password_manager/factories/password_store_backend_factory.cc
++++ b/chrome/browser/password_manager/factories/password_store_backend_factory.cc
+@@ -56,16 +56,9 @@
+                                 : "ProfilePasswordStoreBackendCreation");
+ 
+ #if BUILDFLAG(IS_ANDROID)
+-  using password_manager_android_util::PasswordManagerUtilBridge;
+-  if (!password_manager_android_util::IsPasswordManagerAvailable(
+-          std::make_unique<PasswordManagerUtilBridge>())) {
+-    return std::make_unique<password_manager::PasswordStoreEmptyBackend>();
+-  }
+-  if (is_account_store) {
+-    return std::make_unique<
+-        password_manager::PasswordStoreAndroidAccountBackend>();
+-  }
+-  return std::make_unique<password_manager::PasswordStoreAndroidLocalBackend>();
++  // Cosmo Browser: no GMS password backend. A device-local Android vault
++  // must be implemented and audited before enabling password saving.
++  return std::make_unique<password_manager::PasswordStoreEmptyBackend>();
+ #else   //  BUILDFLAG(IS_ANDROID)
+   std::unique_ptr<password_manager::LoginDatabase> login_db(
+       password_manager::CreateLoginDatabase(is_account_store,
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -227,14 +227,8 @@
+         android:manageSpaceActivity="@string/manage_space_activity"
+         android:supportsRtl="true"
+         android:zygotePreloadName="org.chromium.content_public.app.ZygotePreload"
+-        {% if backup_key is defined %}
+-        android:allowBackup="true"
+-        android:backupAgent="org.chromium.chrome.browser.backup.ChromeBackupAgent"
+-        android:fullBackupOnly="false"
+-        android:restoreAnyVersion="true"
+-        {% else %}
++        <!-- Cosmo Browser: do not back up browser data to cloud services. -->
+         android:allowBackup="false"
+-        {% endif %}
+         android:networkSecurityConfig="@xml/network_security_config"
+         android:appComponentFactory="org.chromium.chrome.browser.base.SplitCompatAppComponentFactory"
+         android:enableOnBackInvokedCallback="true"

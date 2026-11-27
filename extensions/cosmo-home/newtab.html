@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it" data-theme="system">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuova scheda · Cosmo Browser</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/cosmo-32.png">
+  <link rel="stylesheet" href="newtab.css">
+  <script type="module" src="newtab.mjs"></script>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="https://www.cosmonet.info/" aria-label="Visita CosmoNet"><img src="icons/cosmo-128.png" alt="" width="30" height="30">Cosmo Browser</a>
+    <button id="open-settings" aria-haspopup="dialog">Personalizza <span aria-hidden="true">↗</span></button>
+  </header>
+  <main>
+    <p class="eyebrow">IL TUO SPAZIO SUL WEB</p>
+    <h1>Da dove partiamo?</h1>
+    <form id="search-form" role="search" action="https://duckduckgo.com/" method="get">
+      <label class="sr-only" for="search">Cerca sul web</label>
+      <input id="search" name="q" type="search" placeholder="Cerca sul web" autocomplete="off" maxlength="4096" autofocus>
+      <button type="submit" aria-label="Cerca">↗</button>
+    </form>
+    <p id="search-provider" class="search-provider">Ricerca con DuckDuckGo</p>
+    <section aria-label="I tuoi collegamenti" id="shortcuts"></section>
+  </main>
+  <footer><span>CosmoNet · Il web, a modo tuo.</span><span>Temi e collegamenti restano sul dispositivo.</span></footer>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="dialog-heading"><h2 id="settings-title">Il tuo spazio</h2><button id="close-settings" aria-label="Chiudi personalizzazione">×</button></div>
+    <p>Personalizza questa pagina. Le modifiche si salvano qui.</p>
+    <label for="theme">Aspetto</label>
+    <select id="theme"><option value="system">Come il sistema</option><option value="light">Chiaro</option><option value="dark">Scuro</option><option value="sand">Sabbia</option></select>
+    <label for="engine">Motore di ricerca</label>
+    <select id="engine"><option value="duckduckgo">DuckDuckGo</option><option value="google">Google</option><option value="bing">Bing</option></select>
+    <label for="accent">Colore personale</label><input id="accent" type="color" value="#53694e">
+    <h3>Collegamenti</h3><ul id="editable-links"></ul>
+    <form id="link-form">
+      <label for="link-name">Nome</label><input id="link-name" maxlength="50" required placeholder="Il tuo sito">
+      <label for="link-url">Indirizzo web</label><input id="link-url" maxlength="4096" required placeholder="https://esempio.it" inputmode="url">
+      <button class="primary" type="submit">Aggiungi collegamento</button>
+    </form>
+    <p role="status" id="status" aria-live="polite"></p>
+  </dialog>
+</body>
+</html>

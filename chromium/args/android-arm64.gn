@@ -1,0 +1,12 @@
+is_debug = false
+is_component_build = false
+is_official_build = false
+is_chrome_branded = false
+target_os = "android"
+target_cpu = "arm64"
+symbol_level = 1
+blink_symbol_level = 0
+v8_symbol_level = 0
+use_remoteexec = false
+android_channel = "default"
+chrome_public_manifest_package = "info.cosmonet.browser"

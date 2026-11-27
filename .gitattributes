@@ -1,0 +1,17 @@
+* text=auto
+*.py text eol=lf
+*.patch text eol=lf whitespace=-blank-at-eol
+*.cjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.txt text eol=lf
+*.gn text eol=lf
+*.gni text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.png binary
+*.webp binary
+*.ico binary

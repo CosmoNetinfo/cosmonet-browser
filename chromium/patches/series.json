@@ -1,0 +1,169 @@
+[
+  {
+    "path": "chrome/app/theme/chromium/BRANDING",
+    "replacements": [
+      {
+        "before": "COMPANY_FULLNAME=The Chromium Authors",
+        "after": "COMPANY_FULLNAME=CosmoNet"
+      },
+      {
+        "before": "COMPANY_SHORTNAME=The Chromium Authors",
+        "after": "COMPANY_SHORTNAME=CosmoNet"
+      },
+      {
+        "before": "PRODUCT_FULLNAME=Chromium",
+        "after": "PRODUCT_FULLNAME=Cosmo Browser"
+      },
+      {
+        "before": "PRODUCT_SHORTNAME=Chromium",
+        "after": "PRODUCT_SHORTNAME=Cosmo Browser"
+      },
+      {
+        "before": "PRODUCT_INSTALLER_FULLNAME=Chromium Installer",
+        "after": "PRODUCT_INSTALLER_FULLNAME=Cosmo Browser Installer"
+      },
+      {
+        "before": "PRODUCT_INSTALLER_SHORTNAME=Chromium Installer",
+        "after": "PRODUCT_INSTALLER_SHORTNAME=Cosmo Browser Installer"
+      }
+    ],
+    "patchedSha256": "7a2475ef45341e0972e63f3c4a0892a6c8b67052b9d835baf816297a9e78022b"
+  },
+  {
+    "path": "chrome/app/chromium_strings.grd",
+    "replacements": [
+      {
+        "before": "<message name=\"IDS_PRODUCT_NAME\" desc=\"The Chrome application name\" translateable=\"false\">\n            Chromium\n          </message>",
+        "after": "<message name=\"IDS_PRODUCT_NAME\" desc=\"The Chrome application name\" translateable=\"false\">\n            Cosmo Browser\n          </message>"
+      },
+      {
+        "before": "<message name=\"IDS_SHORT_PRODUCT_NAME\" desc=\"The Chrome application short name.\" translateable=\"false\">\n            Chromium\n          </message>",
+        "after": "<message name=\"IDS_SHORT_PRODUCT_NAME\" desc=\"The Chrome application short name.\" translateable=\"false\">\n            Cosmo Browser\n          </message>"
+      }
+    ],
+    "patchedSha256": "3372894aca9b1821c43a04aa1975339616e2db6c45cc91543835d567f2803c66"
+  },
+  {
+    "path": "chrome/common/chrome_paths_linux.cc",
+    "replacements": [
+      {
+        "before": "std::string data_dir_basename = \"chromium\";",
+        "after": "std::string data_dir_basename = \"cosmo-browser\";"
+      }
+    ],
+    "patchedSha256": "07bf2df692a85b039f441195954b5b4c89e720d161c20ed7a4429526b050d605"
+  },
+  {
+    "path": "chrome/install_static/chromium_install_modes.h",
+    "replacements": [
+      {
+        "before": "kProductPathName[] = L\"Chromium\";",
+        "after": "kProductPathName[] = L\"CosmoBrowser\";"
+      },
+      {
+        "before": ".base_app_name = L\"Chromium\",",
+        "after": ".base_app_name = L\"Cosmo Browser\","
+      },
+      {
+        "before": ".base_app_id = L\"Chromium\",",
+        "after": ".base_app_id = L\"CosmoBrowser\","
+      },
+      {
+        "before": ".browser_prog_id_prefix = L\"ChromiumHTM\",",
+        "after": ".browser_prog_id_prefix = L\"CosmoBrowserHTM\","
+      },
+      {
+        "before": "L\"Chromium HTML Document\",",
+        "after": "L\"Cosmo Browser HTML Document\","
+      },
+      {
+        "before": ".direct_launch_url_scheme = \"chromium\",",
+        "after": ".direct_launch_url_scheme = \"cosmo-browser\","
+      },
+      {
+        "before": ".pdf_prog_id_prefix = L\"ChromiumPDF\",",
+        "after": ".pdf_prog_id_prefix = L\"CosmoBrowserPDF\","
+      },
+      {
+        "before": "L\"Chromium PDF Document\",",
+        "after": "L\"Cosmo Browser PDF Document\","
+      }
+    ],
+    "patchedSha256": "93f389e965b33b1b48c928d150cc8236e6d53f5bffa7e334b34d1c600de485de"
+  },
+  {
+    "path": "components/sync/base/command_line_switches.cc",
+    "replacements": [
+      {
+        "before": "return !base::CommandLine::ForCurrentProcess()->HasSwitch(kDisableSync);",
+        "after": "// Cosmo Browser: browser data stays on this device.\n  return false;"
+      }
+    ],
+    "patchedSha256": "e5c25a87c42664745136b3db5e2b990bec4a5d02381f0491488bf9b88975162e"
+  },
+  {
+    "path": "chrome/browser/password_manager/factories/account_password_store_factory.cc",
+    "replacements": [
+      {
+        "before": "return BuildPasswordStore(context);",
+        "after": "// Cosmo Browser: never create an account-backed password store.\n  return nullptr;"
+      }
+    ],
+    "patchedSha256": "da2ddc7fb3a2e543729171695e11e0ff17d4e07c035e68611bc1317dc29767d3"
+  },
+  {
+    "path": "chrome/browser/password_manager/factories/password_store_backend_factory.cc",
+    "replacements": [
+      {
+        "before": "  using password_manager_android_util::PasswordManagerUtilBridge;\n  if (!password_manager_android_util::IsPasswordManagerAvailable(\n          std::make_unique<PasswordManagerUtilBridge>())) {\n    return std::make_unique<password_manager::PasswordStoreEmptyBackend>();\n  }\n  if (is_account_store) {\n    return std::make_unique<\n        password_manager::PasswordStoreAndroidAccountBackend>();\n  }\n  return std::make_unique<password_manager::PasswordStoreAndroidLocalBackend>();\n",
+        "after": "  // Cosmo Browser: no GMS password backend. A device-local Android vault\n  // must be implemented and audited before enabling password saving.\n  return std::make_unique<password_manager::PasswordStoreEmptyBackend>();\n"
+      }
+    ],
+    "patchedSha256": "6105eab3b4cac81a3770bb8292454b3b6a688361ceb82d598cfb250636f4b016"
+  },
+  {
+    "path": "chrome/android/java/AndroidManifest.xml",
+    "replacements": [
+      {
+        "before": "        {% if backup_key is defined %}\n        android:allowBackup=\"true\"\n        android:backupAgent=\"org.chromium.chrome.browser.backup.ChromeBackupAgent\"\n        android:fullBackupOnly=\"false\"\n        android:restoreAnyVersion=\"true\"\n        {% else %}\n        android:allowBackup=\"false\"\n        {% endif %}",
+        "after": "        <!-- Cosmo Browser: do not back up browser data to cloud services. -->\n        android:allowBackup=\"false\""
+      }
+    ],
+    "patchedSha256": "ae1f7b592dbaf4e0bc8c098a76c8c8cc08aefe936d99486d5d828a6451ef39e8"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_16.png",
+    "asset": "branding/icons/cosmo-browser-16.png",
+    "patchedSha256": "b26e84e7b288e52e614c884ece8131cdfcf289ab475f88ca88c09914b9cbf7cd"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_24.png",
+    "asset": "branding/icons/cosmo-browser-24.png",
+    "patchedSha256": "2d26c591748de4ad8e2f4f39e30954649b110da25e06c316fd740de2a36e5d2e"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_48.png",
+    "asset": "branding/icons/cosmo-browser-48.png",
+    "patchedSha256": "0f0bf16a7f24c69e378f503982d23737f9a13d6b849741c506701b87954efda2"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_64.png",
+    "asset": "branding/icons/cosmo-browser-64.png",
+    "patchedSha256": "73f18269451ffaa63a321a170a46c25156dde18e2f30737f7ea935d0b32281ce"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_128.png",
+    "asset": "branding/icons/cosmo-browser-128.png",
+    "patchedSha256": "e79b3b8b84ddd8a10d197a585d9e22d09266e6db252732b5a81c399e31d1b7c4"
+  },
+  {
+    "path": "chrome/app/theme/chromium/product_logo_256.png",
+    "asset": "branding/icons/cosmo-browser-256.png",
+    "patchedSha256": "d0d1fb8be83aeffcb2f47854fe7769817810e98c3716a4dd34f578f0e4b824d2"
+  },
+  {
+    "path": "chrome/app/theme/chromium/win/chromium.ico",
+    "asset": "branding/icons/cosmo-browser.ico",
+    "patchedSha256": "bd0aea75cca2b7fbb40e5aeca926b1e90a67f31500fba085ccf1b2e2c44a8a84"
+  }
+]
