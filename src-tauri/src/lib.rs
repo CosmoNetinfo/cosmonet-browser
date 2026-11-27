@@ -51,6 +51,7 @@ fn validate_bounds(bounds: &Bounds) -> Result<(), String> {
 }
 
 fn smoke_mode() -> bool { std::env::args().any(|arg|arg=="--smoke-test") }
+fn smoke_url() -> String { if smoke_mode(){std::env::var("COSMO_SMOKE_URL").unwrap_or_default()}else{String::new()} }
 
 fn profile_dir(app:&AppHandle)->Result<std::path::PathBuf,String> {
     if smoke_mode() { return app.path().app_cache_dir().map(|p|p.join("smoke-profile")).map_err(|_|"Archivio non disponibile".into()); }
@@ -117,11 +118,12 @@ fn profile(app: &AppHandle, request: &Request) -> Result<Value, String> {
     fs::create_dir_all(&dir).map_err(|_| "Archivio non disponibile")?;
     let file = dir.join("browser-profile.json");
     if request.action == "profile_load" {
-        if !file.exists() { return Ok(json!({"theme":if smoke_mode(){std::env::var("COSMO_SMOKE_THEME").unwrap_or("system".into())}else{"system".into()},"bookmarks":[],"history":[],"smoke":smoke_mode()})); }
+        if !file.exists() { return Ok(json!({"theme":if smoke_mode(){std::env::var("COSMO_SMOKE_THEME").unwrap_or("system".into())}else{"system".into()},"bookmarks":[],"history":[],"smoke":smoke_mode(),"smokeUrl":smoke_url()})); }
         if fs::metadata(&file).map_err(|_|"Profilo non disponibile")?.len()>2_000_000 { return Err("Profilo troppo grande".into()); }
         let mut result:Value=serde_json::from_slice(&fs::read(file).map_err(|_| "Lettura non riuscita")?).map_err(|_| "Profilo non valido")?;
         if !result.is_object() { return Err("Profilo non valido".into()); }
         result["smoke"]=json!(smoke_mode());
+        result["smokeUrl"]=json!(smoke_url());
         if smoke_mode() { if let Ok(theme)=std::env::var("COSMO_SMOKE_THEME") { result["theme"]=json!(theme); } }
         return Ok(result);
     }
@@ -154,6 +156,19 @@ pub fn run() {
                 || (matches!(url.scheme(), "http" | "https") && url.host_str() == Some("tauri.localhost"))
         }).build())
         .setup(|app| {
+            #[cfg(windows)]
+            if let Some(view)=app.get_webview("main") {
+                use windows_core::Interface;
+                use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings4;
+                view.with_webview(|platform|unsafe{
+                    if let Ok(core)=platform.controller().CoreWebView2(){
+                        if let Ok(settings)=core.Settings().and_then(|s|s.cast::<ICoreWebView2Settings4>()){
+                            let _=settings.SetIsPasswordAutosaveEnabled(false);
+                            let _=settings.SetIsGeneralAutofillEnabled(false);
+                        }
+                    }
+                })?;
+            }
             if smoke_mode() && std::env::var("COSMO_SMOKE_CAPTURE").ok().as_deref()!=Some("1") { if let Some(window)=app.get_webview_window("main") { let _=window.hide(); } }
             Ok(())
         })

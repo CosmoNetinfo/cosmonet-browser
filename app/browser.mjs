@@ -163,7 +163,19 @@ try {
   if(saved.smoke){
     const first=active;
     const waitLoaded=async()=>{const until=Date.now()+20000;while(nativePages<1&&Date.now()<until)await new Promise(r=>setTimeout(r,100));if(nativePages<1)throw Error('Nessun caricamento nativo osservato');};
-    await waitLoaded();await createTab();const second=active;await activate(first);await closeTab(second);
-    await native('smoke_finish',{data:{loaded:nativePages,created:2,switched:true,closed:true}});
+    const until=async predicate=>{const end=Date.now()+20000;while(!predicate()&&Date.now()<end)await new Promise(r=>setTimeout(r,100));if(!predicate())throw Error('Navigazione nativa non confermata');};
+    await waitLoaded();await createTab(saved.smokeUrl||'home');const second=active;
+    if(saved.smokeUrl){
+      const two=new URL('/two',saved.smokeUrl).href;
+      await until(()=>tabs.get(second)?.title==='Cosmo smoke one'&&!tabs.get(second)?.loading);
+      await native('navigate',{url:two});
+      await until(()=>tabs.get(second)?.url===two&&tabs.get(second)?.back===true&&!tabs.get(second)?.loading);
+      await native('back');
+      await until(()=>tabs.get(second)?.url===saved.smokeUrl&&tabs.get(second)?.forward===true&&!tabs.get(second)?.loading);
+      await native('forward');
+      await until(()=>tabs.get(second)?.url===two&&tabs.get(second)?.title==='Cosmo smoke two'&&!tabs.get(second)?.loading);
+    }
+    await activate(first);await closeTab(second);
+    await native('smoke_finish',{data:{loaded:nativePages,created:2,switched:true,closed:true,webNavigation:!!saved.smokeUrl}});
   }
 }catch(error){report(error);}

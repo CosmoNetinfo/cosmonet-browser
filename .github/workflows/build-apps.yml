@@ -5,13 +5,19 @@ on:
     branches: [main]
     paths-ignore: ['README.md', 'docs/**', 'branding/logo-prompt.txt']
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Pacchetto da creare'
+        type: choice
+        options: [all, windows, android]
+        default: all
 
 permissions:
   contents: read
 
 concurrency:
-  group: native-apps-${{ github.ref }}
-  cancel-in-progress: true
+  group: native-apps-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  cancel-in-progress: false
 
 jobs:
   source-checks:
@@ -35,6 +41,7 @@ jobs:
 
   windows:
     needs: source-checks
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'windows'
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -74,6 +81,7 @@ jobs:
 
   android:
     needs: source-checks
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -93,6 +101,8 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android platform and NDK
         run: sdkmanager 'platforms;android-37' 'build-tools;37.0.0' 'ndk;28.2.13676358'
       - uses: dtolnay/rust-toolchain@stable

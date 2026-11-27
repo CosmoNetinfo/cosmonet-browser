@@ -42,6 +42,7 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
 
     override fun load(webView: WebView) {
         toolbar = webView
+        toolbar.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         (activity as? ComponentActivity)?.onBackPressedDispatcher?.addCallback(object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 toolbar.evaluateJavascript("(()=>{const d=document.querySelector('dialog[open]');if(d){d.close();return true;}return false;})()") { closed ->
