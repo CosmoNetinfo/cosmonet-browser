@@ -58,7 +58,7 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 
 ### Leggerezza, RAM e tempi di avvio
 
-L'obiettivo è un eseguibile Windows nell'ordine di **~14 MB**, avvio rapido e consumo contenuto. Questi numeri vanno misurati sulle build finali: non sono una garanzia per tutti i computer. Un confronto con un browser che include l'intero motore deve considerare anche lo spazio occupato da WebView2, che qui è condiviso con il sistema.
+La build Windows del commit `2ee7fc9`, prodotta da GitHub Actions e scaricata per il collaudo, misura **4.267.008 byte (~4,27 MB) per la portable** e **1.460.289 byte (~1,46 MB) per l'installer**. La portable è stata avviata da una cartella separata e ha superato il test di navigazione HTTP, indietro/avanti e gestione delle schede. Queste dimensioni escludono il runtime WebView2 condiviso con il sistema e i dati del profilo; possono cambiare nelle build successive.
 
 La dimensione dell'eseguibile non misura la RAM: ogni scheda può usare processi del runtime. Non sono ancora pubblicati benchmark ripetibili di memoria o avvio sotto un secondo. Le future misure includeranno 1/10/30 schede, CPU inattiva, riproduzione video e hardware Android reale.
 

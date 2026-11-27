@@ -108,6 +108,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: 'src-tauri -> target'
+          cache-on-failure: true
       - run: npm ci --ignore-scripts
       - run: npm run prepare:app
       - name: Prepare private personal signing key
