@@ -70,7 +70,7 @@ La navigazione avviene in viste native, quindi non dipende dal permesso di un si
 
 Le credenziali sono conservate in un archivio cifrato sul dispositivo. L'app non offre login del browser o sincronizzazione dell'archivio con servizi cloud.
 
-- **Windows:** DPAPI protegge il contenuto per l'utente Windows corrente. Il file è `credentials.dpapi` nella cartella dati dell'app. Non viene usato il vecchio `passwords.json`.
+- **Windows:** DPAPI protegge il contenuto per l'utente Windows corrente. Il file è `credentials.dpapi` in `%LOCALAPPDATA%\info.cosmonet.browser`, fuori dalla cartella dei profili itineranti. L'app sposta qui l'eventuale archivio cifrato delle prime build se la destinazione è assente; non sovrascrive un archivio locale esistente. Non viene importato il vecchio `passwords.json`.
 - **Android:** una chiave AES nel Keystore cifra l'archivio `cosmo-vault.aes` nella directory privata dell'app. Il manifest disabilita il backup dell'app. Un archivio esistente senza la relativa chiave non viene sovrascritto silenziosamente.
 - Il salvataggio iniziale è manuale dal pannello **Password locali**. Le password non vengono mostrate negli elenchi né restituite dal comando che elenca gli accessi.
 - La compilazione richiede un clic, HTTPS, corrispondenza dell'origine del sito e un secondo controllo dell'origine nello script. Non invia automaticamente il modulo di login.

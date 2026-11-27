@@ -25,7 +25,7 @@ fn crypt(data:&[u8], encrypt:bool)->Result<Vec<u8>,String> {
 }
 
 fn read(app:&AppHandle)->Result<Vec<Entry>,String> {
-    let file=app.path().app_data_dir().map_err(|_|"Archivio non disponibile")?.join("credentials.dpapi");
+    let file=crate::local_data_dir(app)?.join("credentials.dpapi");
     if !file.exists() { return Ok(vec![]); }
     if fs::metadata(&file).map_err(|_|"Archivio non disponibile")?.len()>16_000_000 { return Err("Archivio troppo grande".into()); }
     let encrypted=fs::read(file).map_err(|_|"Lettura archivio non riuscita")?;
@@ -36,7 +36,7 @@ fn read(app:&AppHandle)->Result<Vec<Entry>,String> {
 }
 
 fn write(app:&AppHandle,entries:&[Entry])->Result<(),String> {
-    let dir=app.path().app_data_dir().map_err(|_|"Archivio non disponibile")?;
+    let dir=crate::local_data_dir(app)?;
     fs::create_dir_all(&dir).map_err(|_|"Archivio non disponibile")?;
     let mut plain=serde_json::to_vec(entries).map_err(|_|"Archivio non valido")?;
     let encrypted=crypt(&plain,true); plain.fill(0); let encrypted=encrypted?;

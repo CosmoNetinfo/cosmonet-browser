@@ -53,9 +53,29 @@ fn validate_bounds(bounds: &Bounds) -> Result<(), String> {
 fn smoke_mode() -> bool { std::env::args().any(|arg|arg=="--smoke-test") }
 fn smoke_url() -> String { if smoke_mode(){std::env::var("COSMO_SMOKE_URL").unwrap_or_default()}else{String::new()} }
 
+fn local_data_dir(app:&AppHandle)->Result<std::path::PathBuf,String> {
+    let dir=app.path().app_local_data_dir().map_err(|_|"Archivio locale non disponibile")?;
+    fs::create_dir_all(&dir).map_err(|_|"Archivio locale non disponibile")?;
+    #[cfg(windows)]
+    {
+        let previous=app.path().app_data_dir().map_err(|_|"Archivio precedente non disponibile")?;
+        if previous!=dir {
+            // Migrate only our encrypted vault and preferences. Never import plaintext passwords.
+            for name in ["credentials.dpapi","browser-profile.json"] {
+                let source=previous.join(name);
+                let destination=dir.join(name);
+                if source.exists() && !destination.exists() {
+                    fs::rename(source,destination).map_err(|_|"Spostamento dei dati nella cartella locale non riuscito")?;
+                }
+            }
+        }
+    }
+    Ok(dir)
+}
+
 fn profile_dir(app:&AppHandle)->Result<std::path::PathBuf,String> {
     if smoke_mode() { return app.path().app_cache_dir().map(|p|p.join("smoke-profile")).map_err(|_|"Archivio non disponibile".into()); }
-    app.path().app_data_dir().map_err(|_|"Archivio non disponibile".into())
+    local_data_dir(app)
 }
 
 #[tauri::command]
