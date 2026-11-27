@@ -2,261 +2,208 @@
 
 ![Logo Cosmo Browser](branding/icons/cosmo-browser-128.png)
 
-Browser gratuito in sviluppo per **Windows, Linux e Android**, con identità CosmoNet, personalizzazioni locali ed estensioni proprie. La nuova direzione tecnica è un derivato di **Chromium**.
+**Browser gratuito per uso personale, in sviluppo per Windows e Android.** Core in Rust, interfaccia Tauri 2 e navigazione in webview native: Microsoft WebView2 su Windows, Android WebView sul telefono. La versione Linux è rimandata.
 
-**Stato attuale: preparazione della base Chromium, non una release del browser.** Il repository contiene strumenti di compilazione, modifiche native verificabili, un'estensione desktop collaudata in Chromium di test, un nuovo logo con favicon e temi. Non sono ancora disponibili nuovi installer Windows/Linux o APK Cosmo Browser verificati. Il vecchio eseguibile nella radice e le vecchie release appartengono al prototipo Tauri/Electron e non rappresentano questo nuovo percorso.
+Il progetto usa i motori già aggiornati dal sistema e **non compila un fork completo di Chromium**. Questo permette build sui runner standard gratuiti di GitHub Actions, senza server a pagamento o checkout del motore da 100 GB. I moduli CosmoNet sono componenti propri: non equivalgono al supporto completo delle estensioni Chrome.
 
-## Obiettivi
+**Versione di sviluppo: 0.3.0.** Il core Windows è stato compilato e collaudato con caricamento reale e gestione delle schede. La build Android e i pacchetti installabili vengono verificati dalla pipeline descritta sotto. Consultare sempre l'esito del workflow: la presenza del codice non dimostra che ogni funzione sia già collaudata su un telefono.
 
-- Navigazione quotidiana compatibile con i siti moderni.
-- Versioni Windows x64, Linux x64 e Android ARM64.
-- Password conservate sul dispositivo, senza sincronizzazione con account cloud.
-- Temi, colori, pagina iniziale e strumenti CosmoNet personalizzabili.
-- Estensioni CosmoNet sviluppate nel progetto, con permessi minimi.
-- Consumi contenuti da verificare con misure ripetibili, senza indebolire sandbox e isolamento dei siti.
-- Distribuzione iniziale gratuita per uso personale, senza acquisti, abbonamenti o funzioni di vendita.
+## Schermate reali
 
-Nessun browser può garantire sicurezza al 100%. L'obiettivo è ridurre i rischi con aggiornamenti tempestivi, protezioni del motore, gestione corretta delle credenziali e test. Le funzioni desiderate devono superare verifiche concrete prima di essere dichiarate disponibili.
+Queste immagini provengono dalla finestra dell'app Windows, con profilo di test isolato. Sono catture del rendering dell'app, non mockup o immagini del desktop. Le schermate Android verranno aggiunte dopo il collaudo su dispositivo o emulatore.
 
-## Cosa funziona e cosa manca
+### Windows · tema chiaro
 
-| Componente | Stato | Limiti attuali |
+![Cosmo Browser su Windows, tema chiaro](docs/screenshots/windows-light.png)
+
+### Windows · tema scuro
+
+![Cosmo Browser su Windows, tema scuro](docs/screenshots/windows-dark.png)
+
+## Download di sviluppo: installer, portable e APK
+
+Aprire [GitHub Actions → Build Windows installer and Android APK](https://github.com/CosmoNetinfo/cosmonet-browser/actions/workflows/build-apps.yml), scegliere un'esecuzione **riuscita** e scorrere fino ad **Artifacts**:
+
+| Artefatto | Contenuto | Note |
 | --- | --- | --- |
-| Versione Chromium e depot_tools fissati | Implementato | La versione va aggiornata seguendo le patch di sicurezza upstream |
-| Download di una baseline ridotta dei sorgenti | Implementato | Serve ai test; non è il checkout completo |
-| Controllo prerequisiti Windows/Linux/Android | Implementato | I pacchetti Linux devono essere installati e verificati sul builder |
-| Applicazione delle modifiche native | Verificabile con test sui sorgenti reali | Compilazione C++ e test runtime ancora da eseguire |
-| Branding e separazione profili desktop | Modifiche preparate | Icone native, traduzioni e identità installer da completare |
-| Sincronizzazione browser e archivio password account disabilitati | Modifiche preparate | Da verificare nelle build native prima della distribuzione |
-| Cosmo Home per desktop | Implementato | Installazione di sviluppo manuale; non ancora integrato nel browser |
-| Aspetto chiaro, scuro, sabbia e sistema nella nuova scheda | Implementato | L'aspetto della nuova scheda è separato dal tema della barra del browser |
-| Temi browser Foresta e Notte | Manifest e pacchetti disponibili | Da collaudare nelle build Cosmo Browser |
-| Password desktop | Backend nativo conservato | Cifratura, portachiavi Linux e assenza di fallback debole da validare |
-| Password Android solo sul dispositivo | Non disponibile | Backend GMS disabilitato nelle modifiche; serve un archivio locale verificato |
-| Estensioni Android | Non disponibile | Non equivalgono automaticamente alle estensioni desktop |
-| Installer, pacchetti Linux e APK aggiornabili | Da realizzare e collaudare | Nessun nuovo download finale disponibile |
-| Aggiornamenti browser | Da realizzare | Non usare la futura prima build come browser principale prima di questa fase |
+| `Cosmo-Browser-Windows` | Installer NSIS `.exe`, `Cosmo-Browser-Portable.exe`, checksum SHA-256 | Windows x64, nessun certificato commerciale |
+| `Cosmo-Browser-Android` | APK ARM64 firmato con chiave personale e checksum | Android 9 o successivo; collaudo su dispositivo necessario |
 
-Schede, download, PDF, cronologia, segnalibri, navigazione privata e permessi dei siti saranno ereditati dalla base Chromium e collaudati nelle build del prodotto. La loro presenza upstream non certifica ancora il funzionamento in Cosmo Browser.
+Per scaricare gli artefatti Actions può essere necessario accedere a GitHub. Le build sono conservate per 7 giorni: non sono ancora un canale stabile di aggiornamento o una release finale. Un job fallito non produce un pacchetto verificato.
 
-## Perché Chromium
+L'installer Windows verifica/installa WebView2 tramite il bootstrapper Microsoft. La portable usa il runtime WebView2 presente nel sistema e conserva i dati nella cartella applicativa dell'utente: **portable non significa che il profilo sia contenuto nell'eseguibile**. L'assenza di firma commerciale può generare avvisi Windows; non disabilitare le protezioni del sistema per ignorarli.
 
-Chromium fornisce il motore e gran parte dell'infrastruttura di un browser completo. Il progetto mantiene le personalizzazioni in un livello separato, invece di riscrivere motore HTML, JavaScript, TLS o sandbox.
+Android richiede una firma per installare qualsiasi APK. Il progetto usa una chiave personale gratuita, conservata fuori dalla repository e fornita alla CI tramite GitHub Secrets cifrati. La stessa chiave deve essere conservata per poter aggiornare l'app senza cambiarne identità. Non serve acquistare un certificato.
 
-Tauri usa webview di sistema e resta utile per applicazioni leggere, ma il suo eseguibile ridotto non misura la memoria complessiva impiegata dal runtime. Electron permette di costruire rapidamente un'interfaccia desktop, ma non supporta tutte le API delle estensioni Chrome. Per gli obiettivi di Cosmo Browser è stato scelto un derivato diretto di Chromium.
+## Caratteristiche e stato reale
 
-La scelta non garantisce automaticamente meno RAM di Chrome o Brave. Gli obiettivi di prestazione sono misurare avvio, memoria con 1/10/30 schede, CPU inattiva, sospensione delle schede, riproduzione video e consumi su Android. La base non include modifiche che disabilitano la sandbox o la sicurezza web.
+| Funzione | Implementazione | Verifica / limite |
+| --- | --- | --- |
+| Core Rust e Tauri 2 | Comandi nativi validati, dati locali, gestione schede | Compilazione Windows riuscita |
+| Schede native integrate | Viste figlie nella finestra Windows; WebView native nel plugin Android | Test Windows: due schede create, attivate e chiuse |
+| Navigazione senza iframe | HTTP/HTTPS in WebView2 / Android WebView | Non aggira restrizioni OAuth, DRM o policy dei siti |
+| Barra indirizzi e ricerca | Navigazione, ricerca DuckDuckGo, URL e titolo aggiornati dal motore | Indietro/avanti nativi, ricarica e home |
+| Preferiti e cronologia | Memorizzazione locale, apertura e cancellazione | Nessun account cloud del browser |
+| Temi | Sistema, chiaro, scuro e sabbia | Interfaccia e home; i siti mantengono il proprio aspetto |
+| Logo e favicon Cosmo Browser | C orbitale nei colori CosmoNet, icone PNG e ICO | Integrati nell'app e nelle risorse Android |
+| Password Windows | Archivio cifrato con DPAPI, legato all'utente Windows | Test di cifratura, decifratura e rilevamento corruzione riusciti |
+| Password Android | AES-256-GCM con chiave Android Keystore; backup app disabilitato | Implementato, da collaudare sul dispositivo |
+| Gestione password | Inserimento manuale, elenco senza valori segreti, cancellazione e compilazione su clic | Solo siti HTTPS e origine esatta; nessun autosalvataggio dichiarato |
+| Moduli CosmoNet | Primo modulo: Lettura CosmoNet, limitato a cosmonet.info | Non ha accesso all'archivio credenziali |
+| Debug | DevTools nativi Windows e console Eruda inclusa localmente | Niente caricamento della console da CDN |
+| Download Android | DownloadManager, cartella download dell'app | Da verificare su telefono; nessuna esecuzione automatica dei file |
+| Installer e APK | Workflow su runner GitHub standard | Gli esiti e gli artefatti sono visibili in Actions |
+| Aggiornamenti del browser | Non ancora implementati | Installazione manuale delle build di sviluppo |
+| Versione Linux | Rimandata | Ubuntu in Actions serve solo come macchina di compilazione Android |
 
-Riferimenti: [Chromium](https://www.chromium.org/), [estensioni Electron](https://www.electronjs.org/docs/latest/api/extensions), [webview Tauri](https://tauri.app/reference/webview-versions/).
+### Leggerezza, RAM e tempi di avvio
 
-## Struttura
+L'obiettivo è un eseguibile Windows nell'ordine di **~14 MB**, avvio rapido e consumo contenuto. Questi numeri vanno misurati sulle build finali: non sono una garanzia per tutti i computer. Un confronto con un browser che include l'intero motore deve considerare anche lo spazio occupato da WebView2, che qui è condiviso con il sistema.
+
+La dimensione dell'eseguibile non misura la RAM: ogni scheda può usare processi del runtime. Non sono ancora pubblicati benchmark ripetibili di memoria o avvio sotto un secondo. Le future misure includeranno 1/10/30 schede, CPU inattiva, riproduzione video e hardware Android reale.
+
+### Compatibilità dei siti
+
+La navigazione avviene in viste native, quindi non dipende dal permesso di un sito di essere caricato in un iframe. Questo evita i limiti degli iframe, ma **non garantisce un “bypass totale”**: alcuni accessi Google/OAuth, contenuti DRM e servizi possono rifiutare browser incorporati. Non vengono falsificati user agent o header e non vengono disabilitate sandbox, controlli TLS o sicurezza web per aggirare quei limiti.
+
+## Password e sicurezza
+
+Le credenziali sono conservate in un archivio cifrato sul dispositivo. L'app non offre login del browser o sincronizzazione dell'archivio con servizi cloud.
+
+- **Windows:** DPAPI protegge il contenuto per l'utente Windows corrente. Il file è `credentials.dpapi` nella cartella dati dell'app. Non viene usato il vecchio `passwords.json`.
+- **Android:** una chiave AES nel Keystore cifra l'archivio `cosmo-vault.aes` nella directory privata dell'app. Il manifest disabilita il backup dell'app. Un archivio esistente senza la relativa chiave non viene sovrascritto silenziosamente.
+- Il salvataggio iniziale è manuale dal pannello **Password locali**. Le password non vengono mostrate negli elenchi né restituite dal comando che elenca gli accessi.
+- La compilazione richiede un clic, HTTPS, corrispondenza dell'origine del sito e un secondo controllo dell'origine nello script. Non invia automaticamente il modulo di login.
+- Le WebView dei siti non ricevono le API Tauri dell'interfaccia. I comandi Rust verificano anche etichetta e origine della UI locale. Il plugin Android non aggiunge interfacce JavaScript native ai contenuti dei siti.
+- I dati di preferiti e cronologia restano in un JSON locale, perché non sono l'archivio delle credenziali. Non inserirvi password.
+
+Nessun browser può essere sicuro al 100%. Un sistema compromesso, malware nell'account dell'utente o un sito malevolo dopo la compilazione dei suoi campi restano rischi reali. Il percorso Android necessita ancora di verifiche runtime e non è presentato come un vault già certificato. Fotocamera, microfono e caricamento file richiedono lavoro aggiuntivo: le richieste dei siti non vengono autorizzate indiscriminatamente.
+
+Leggere [SECURITY.md](SECURITY.md) per scansione dei segreti e stato degli avvisi. Le segnalazioni GitGuardian devono essere verificate nei singoli dettagli; gli hash pubblici dei sorgenti non sono password. Nessuna credenziale reale deve essere “risolta” soltanto cancellandola dal ramo corrente: se confermata, va revocata o ruotata.
+
+## Moduli ed estensioni proprietarie
+
+Il primo modulo è in `modules/cosmonet-reader/`: il suo manifest dichiara identità, versione e origini consentite. Il comando nativo verifica l'origine effettiva prima di attivarlo. Il modulo applica una presentazione più leggibile agli articoli CosmoNet e può essere disattivato richiamandolo.
+
+Un modulo non riceve accesso libero a file, chiavi o credenziali. I nuovi moduli vanno aggiunti con una funzione precisa e permessi verificabili. L'installazione arbitraria di moduli di terzi, una sandbox di estensioni e un catalogo non sono ancora implementati.
+
+L'estensione desktop separata **Cosmo Home** in `extensions/cosmo-home/` resta disponibile per browser Chromium compatibili. Offre nuova scheda, temi, collegamenti e preferenze in `chrome.storage.local`, senza accesso ai siti visitati. Non è la prova che Cosmo Browser supporti tutte le estensioni Chrome, né che le estensioni desktop funzionino su Android.
+
+## Build gratuite con GitHub Actions
+
+Il workflow principale è [.github/workflows/build-apps.yml](.github/workflows/build-apps.yml). Si avvia con push di codice su `main` o dal pulsante **Run workflow**:
+
+1. Controlla i modelli JavaScript e scansiona l'intera cronologia con Gitleaks, oscurando i valori rilevati.
+2. Su `windows-latest`, compila Rust, verifica DPAPI, genera installer NSIS e portable, quindi esegue il test dell'app con WebView2 reale.
+3. Su `ubuntu-24.04`, installa SDK/NDK Android, compila il core Rust per ARM64 e il plugin nativo, firma l'APK con la chiave personale e ne verifica la firma.
+4. Carica i pacchetti e i checksum come artefatti di sviluppo. La chiave temporanea Android viene eliminata dal runner anche in caso di errore.
+
+Questa configurazione usa runner **standard**, non runner più grandi a pagamento o macchine self-hosted. Per le repository pubbliche l'esecuzione standard è gratuita; conservazione degli artefatti e quote dell'account vanno comunque controllate. Non sono previsti servizi cloud di sincronizzazione, pubblicità, abbonamenti o vendite del browser.
+
+Le credenziali tecniche di firma sono nei Secrets `COSMO_ANDROID_KEYSTORE_B64` e `COSMO_ANDROID_STORE_PASSWORD`. I nomi non sono segreti; i valori non devono comparire nei file, negli output o negli artefatti. L'account che mantiene la repository deve conservare una copia privata della chiave e della password, esterna al progetto.
+
+Il vecchio workflow per un fork completo di Chromium è archiviato in `legacy/workflows/` e non è la pipeline corrente. La cartella `chromium/` conserva esperimenti e controlli sui sorgenti, non viene compilata per generare questa versione.
+
+Riferimenti: [costi Actions](https://docs.github.com/en/actions/concepts/billing-and-usage), [Tauri](https://v2.tauri.app/), [sicurezza WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security).
+
+## Sviluppo locale
+
+### Struttura
 
 ```text
-branding/                    Logo originale, prompt e icone esportate
-favicon.ico, favicon.png     Favicon multirisoluzione e PNG 32 pixel
-chromium/
-  product.json                Identità, piattaforme e requisiti del prodotto
-  upstream.lock.json          Commit Chromium, depot_tools e hash della baseline
-  args/                       Configurazioni GN dei tre target
-  patches/series.json         Modifiche con contesti e hash di risultato
-  patches/cosmo-browser.patch Diff leggibile delle modifiche native
-extensions/cosmo-home/        Nuova scheda desktop, senza accesso ai siti visitati
-themes/                      Manifest dei temi browser
-tools/chromium.py            doctor, sync, apply, configure, build
-tools/fetch-upstream.py       Baseline ridotta dei sorgenti ufficiali
-tools/make-patches.py         Rigenera le modifiche contro la baseline verificata
-tools/package-extensions.py   Pacchetti ZIP deterministici per estensioni e temi
-tests/                       Test JavaScript, Python e browser reale
-legacy/                      Manifest e workflow del vecchio prototipo
-src-tauri/, src-web/, www/    Sorgenti storici, ancora conservati per riferimento
-.work/                       Baseline e dati temporanei locali, esclusi da Git
-dist/extensions/             Pacchetti di sviluppo generati, esclusi da Git
+app/                         Interfaccia del browser e home inclusa nell'app
+app/vendor/                  Console Eruda locale e relativa licenza
+src-tauri/src/               Core Rust, schede desktop e archivio DPAPI
+src-tauri/plugins/browser/   Plugin WebView/Keystore Android
+src-tauri/gen/android/       Progetto Android e configurazione di firma
+modules/                     Moduli CosmoNet propri
+branding/                    Master del logo, prompt e icone esportate
+docs/screenshots/            Schermate reali verificate
+extensions/, themes/         Cosmo Home e temi Chromium separati
+tools/, tests/               Preparazione, test, scansioni e strumenti di build
+legacy/, chromium/           Riferimenti storici e sperimentali
+.work/                       Report e file locali esclusi da Git
 ```
 
-I vecchi documenti di stato descrivono il prototipo storico. Questo README e i file `chromium/` descrivono il nuovo percorso. I vecchi workflow che pubblicavano build Tauri sono stati archiviati; la CI corrente verifica il nuovo codice senza pubblicare un browser.
+I vecchi `src-web/`, `www/` e documenti di stato descrivono il prototipo precedente. Il frontend corrente è `app/`; il vecchio eseguibile nella radice non rappresenta la versione 0.3.0.
 
-## Avvio per sviluppatori
+### Windows
 
-Per testare il modulo Cosmo Home non è necessario compilare Chromium.
+Servono Node.js 22+, Python, Rust stabile, strumenti C++ Microsoft per lo sviluppo desktop, SDK Windows e WebView2. Non è richiesto l'ambiente da 100 GB usato per compilare Chromium.
 
-Requisiti: Git, Node.js 22 o successivo, npm e Python 3.9 o successivo. Per i test locali recenti è consigliato Python 3.12+. Lo script Node usa `py` su Windows e `python3` su Linux.
-
-```sh
+```powershell
 git clone https://github.com/CosmoNetinfo/cosmonet-browser.git
 cd cosmonet-browser
 npm ci --ignore-scripts
-npm test
-node tools/python.cjs tools/fetch-upstream.py
-npm run test:upstream
-npm run extensions:pack
+npm run prepare:app
+npm start
 ```
 
-Il download della baseline legge file dal commit ufficiale indicato nel lock. Gli hash vengono controllati; non si applicano modifiche a sorgenti diversi. I test usano copie temporanee e non alterano un checkout di sviluppo.
+Compilazione e test:
 
-Per i test dell'estensione in Chromium reale:
+```powershell
+npm test
+cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+npm run build:windows
+node tools/native-smoke.cjs
+```
+
+Il test nativo usa un profilo e una directory WebView2 isolati; verifica caricamento, creazione, attivazione e chiusura delle viste contenuto. Il report resta in `.work/`. L'output Windows è in `src-tauri/target/release/bundle/nsis/`; l'eseguibile standalone è `src-tauri/target/release/cosmo-browser.exe`.
+
+### Android
+
+Per ottenere l'APK **non serve Linux sul proprio PC**: può compilarlo GitHub Actions su Ubuntu. Per compilare localmente servono JDK, SDK Android 37, Build Tools 37, NDK 28.2.13676358 e il target Rust `aarch64-linux-android`, con `JAVA_HOME`, `ANDROID_HOME` e `NDK_HOME` configurati.
 
 ```sh
+npm ci --ignore-scripts
+npm run prepare:app
+rustup target add aarch64-linux-android
+npm run build:android
+```
+
+Una compilazione locale release senza configurazione di firma può produrre un APK non installabile. Usare la chiave personale tramite ambiente locale protetto oppure `npm exec tauri -- android build --debug --apk --target aarch64 --ci` per un test di sviluppo. Chiavi debug diverse non permettono aggiornamenti trasparenti tra build: non disinstallare un'app con dati importanti senza aver prima valutato come conservarli.
+
+L'APK è sotto `src-tauri/gen/android/app/build/outputs/apk/`. Le build sono ARM64; emulatori x86 e dispositivi ARM a 32 bit richiedono target aggiuntivi. Android 9 è il minimo configurato, non una certificazione di funzionamento su tutti i dispositivi.
+
+### Test accessori e sicurezza
+
+```sh
+npm run secrets:scan
+npm run extensions:pack
 npm exec playwright install chromium
 npm run test:browser
 ```
 
-Su Linux, se mancano le librerie per il browser di test, usare `npm exec playwright install --with-deps chromium`. Questo comando può installare pacchetti di sistema e richiedere privilegi amministrativi. Per usare un Chromium di test già installato, impostare `COSMO_TEST_BROWSER` al percorso del suo eseguibile.
+Gitleaks viene scaricato dalla release ufficiale fissata e verificato tramite checksum. Il report è oscurato e non viene caricato come artefatto pubblico. I test Playwright riguardano l'estensione Cosmo Home; non sostituiscono i test del browser nativo.
 
-Il test verifica caricamento dell'estensione, preferenze locali dopo ricaricamento, cambio tema e motore, validazione dei collegamenti, nomi trattati come testo, layout stretto, assenza di richieste web dalla nuova scheda inattiva e ricerca. Gli screenshot vengono salvati in `test-results/`. Queste verifiche non sono un test delle build native Windows/Linux/Android.
+## Logo, favicon e schermate
 
-## Logo e favicon
+La C orbitale riprende blu, ciano e viola del marchio CosmoNet. È stata creata con ImageGen; il prompt completo è in [branding/logo-prompt.txt](branding/logo-prompt.txt). Il master trasparente è `branding/cosmo-browser-master.png`; PNG da 16 a 1024 pixel e ICO multirisoluzione sono in `branding/icons/`. Le favicon sono anche disponibili nella radice come `favicon.ico` e `favicon.png`.
 
-Il simbolo di Cosmo Browser è una **C orbitale** che riprende blu, ciano e viola del brand CosmoNet. Il master trasparente è in `branding/cosmo-browser-master.png`; è stato generato con ImageGen e il prompt completo è conservato in `branding/logo-prompt.txt`.
+Per esportare le dimensioni dal master usare `node tools/python.cjs tools/build-brand-icons.py` con Pillow nell'ambiente di sviluppo, poi `npm run prepare:app`. Le normali build non richiedono Pillow perché le icone esportate sono già versionate.
 
-`branding/icons/` contiene PNG da 16 a 1024 pixel e un ICO multirisoluzione. Nella radice sono disponibili `favicon.ico` e `favicon.png`. Cosmo Home usa il nuovo simbolo sia come logo sia come favicon e icona dell'estensione; anche le pagine storiche hanno il riferimento alla nuova favicon. Le risorse Chromium desktop corrispondenti sono incluse nella serie di modifiche, con controllo degli hash. L'integrazione delle icone native Android resta da completare con la build mobile.
-
-Per rigenerare le dimensioni dal master, installare Pillow nell'ambiente di sviluppo e usare `node tools/python.cjs tools/build-brand-icons.py`, poi `node tools/python.cjs tools/make-patches.py`. Il generatore preserva la trasparenza e il disegno originale; non serve alle normali compilazioni perché i file esportati sono già nel repository. Non è ancora disponibile un master vettoriale.
-
-## Provare Cosmo Home ed estensioni proprie
-
-In un browser desktop Chromium compatibile:
-
-1. Aprire la gestione estensioni, normalmente `chrome://extensions`.
-2. Attivare la modalità sviluppatore.
-3. Scegliere **Carica estensione non pacchettizzata** e selezionare `extensions/cosmo-home`.
-4. Aprire una nuova scheda.
-
-L'estensione usa Manifest V3 e richiede solo il permesso `storage`. Non ha script nei siti visitati, accesso alla cronologia, lettura delle password o worker in background. Temi della pagina, motore di ricerca e collegamenti usano `chrome.storage.local`, non `chrome.storage.sync`. Non sono cifrati perché contengono solo preferenze e collegamenti: **non inserirvi credenziali o altri segreti**.
-
-La nuova scheda non carica font remoti, favicon da servizi esterni, analytics o codice remoto. Una ricerca invia il testo al motore scelto; aprire un collegamento contatta il sito corrispondente. Questo non è una promessa di assenza di traffico di rete dell'intero browser.
-
-`npm run extensions:pack` genera:
-
-- `dist/extensions/cosmo-home.zip`;
-- `dist/extensions/cosmo-theme-forest.zip`;
-- `dist/extensions/cosmo-theme-midnight.zip`;
-- cartelle `dist/extensions/forest` e `dist/extensions/midnight`, ciascuna con il proprio `manifest.json`.
-
-I ZIP sono archivi di sviluppo, non pacchetti CRX firmati. Per provare un tema si carica la cartella del tema dalla gestione estensioni, se il browser usato lo consente. I colori della barra del browser sono nei manifest in `themes/`; i colori della nuova scheda sono in `extensions/cosmo-home/newtab.css`.
-
-Per aggiungere strumenti CosmoNet, creare un modulo in `extensions/` con permessi limitati alla sua funzione. Le funzioni che necessitano API interne al browser richiedono invece modifiche native, controlli di accesso e test specifici. Le estensioni di terzi devono essere provate singolarmente: servizi Google, DRM e ogni API del Chrome Web Store non sono garantiti dalla sola compilazione di Chromium.
-
-## Compilare il browser
-
-### Versione fissata e spazio
-
-La baseline iniziale è **Chromium 159.0.8154.34**, commit `4deb883708d3d25100c5aac2148aafc95dae95ac`. Il commit di `depot_tools` è fissato separatamente nel lock. Questa è una fotografia riproducibile, non una promessa di essere sempre la versione più recente.
-
-Il checkout completo e i suoi strumenti richiedono decine di GB di download. La documentazione Chromium indica almeno 100 GB liberi; lo script richiede prudenzialmente 120 GiB prima di iniziare, ma build multiple, simboli e cache possono richiederne molti di più. Sono raccomandati SSD, almeno 16 GB di RAM e spazio aggiuntivo. Non viene avviato un checkout completo dai normali test.
-
-Usare una cartella dedicata **esterna al repository e senza spazi**, per esempio `V:/cb` su Windows o `/srv/cosmo-build` su Linux. Ogni piattaforma richiede un workspace separato. Gli script non eseguono reset forzati, non adottano cartelle esistenti non riconosciute e non modificano la configurazione Git globale.
-
-### Windows x64
-
-Requisiti del ramo scelto:
-
-- Windows 10/11 x64 e volume NTFS;
-- Visual Studio 2026, strumenti C++ x64, workload Desktop C++ e componenti ATL/MFC;
-- Windows SDK 10.0.28000 e Debugging Tools compatibili;
-- Git, Python e spazio sufficiente.
-
-Verificare prima di scaricare i sorgenti:
+Le schermate Windows sono state acquisite dal rendering diretto della sola finestra del browser, dopo il test nativo, con dati di prova. Il tool `capture-native-window.py` non usa una cattura del desktop come ripiego. Per riprodurle, con Pillow disponibile:
 
 ```powershell
-npm run doctor -- --target windows-x64 --workspace V:/cb
+node tools/native-smoke.cjs src-tauri/target/release/cosmo-browser.exe --capture
+node tools/native-smoke.cjs src-tauri/target/release/cosmo-browser.exe --capture --dark
 ```
 
-Il comando restituisce codice `2` se mancano prerequisiti. Per un report strutturato aggiungere `--json`. Sul computer iniziale sono presenti Visual Studio 2026 e il vecchio SDK 26100, ma il controllo segnala componenti C++/ATL-MFC, SDK 28000 e Debugging Tools mancanti. Finché non vengono installati la compilazione completa non è verificabile.
+## Prossime tappe
 
-```powershell
-py tools/chromium.py sync --target windows-x64 --workspace V:/cb
-py tools/chromium.py configure --target windows-x64 --workspace V:/cb
-py tools/chromium.py build --target windows-x64 --workspace V:/cb
-```
+- Collaudo Android su emulatore/dispositivo: navigazione, tastiera, rotazione, tasto indietro, download, archivio locale e aggiornamento con la stessa chiave.
+- Test più estesi su siti reali, popup, login, PDF, file upload e permessi dei siti.
+- Misure ripetibili di dimensione, avvio e RAM; gestione della sospensione delle schede.
+- Autosalvataggio password con conferma e gestione corretta delle origini, prima di dichiararlo disponibile.
+- Altri moduli CosmoNet, personalizzazione dei temi e accessibilità.
+- Aggiornamenti del browser verificabili. Linux resta fuori dalla prima fase.
 
-L'output di sviluppo si trova in `V:/cb/src/out/Cosmo-windows-x64/`. Non distribuire il solo `chrome.exe`: il browser dipende da librerie, risorse, file di dati e processi ausiliari. Packaging e installer Cosmo Browser richiedono una fase ulteriore.
+La finalità “le caratteristiche migliori dei browser” viene tradotta in funzioni concrete e collaudabili; non è una promessa che tutte siano già presenti.
 
-### Linux x64
+## Uso personale, licenza e contributi
 
-Usare una macchina Linux x64, preferibilmente Ubuntu, con Git, Python e i requisiti indicati da Chromium:
+Cosmo Browser è pensato come progetto gratuito per uso personale, senza funzioni di vendita. Il vecchio manifest dichiara MIT, ma la licenza del progetto deve ancora essere formalizzata in un file `LICENSE`: questa fase non introduce nuove restrizioni sul codice. Le dipendenze mantengono le proprie licenze; la licenza Eruda è inclusa in `app/vendor/ERUDA-LICENSE.txt`.
 
-```sh
-python3 tools/chromium.py doctor --target linux-x64 --workspace /srv/cosmo-linux
-python3 tools/chromium.py sync --target linux-x64 --workspace /srv/cosmo-linux
-sudo /srv/cosmo-linux/src/build/install-build-deps.sh
-python3 tools/chromium.py configure --target linux-x64 --workspace /srv/cosmo-linux
-python3 tools/chromium.py build --target linux-x64 --workspace /srv/cosmo-linux
-```
+Per contribuire, aprire una issue o una pull request con problema, modifica e verifiche eseguite. Non allegare archivi password, profili personali, chiavi di firma o token.
 
-La cartella `/srv/cosmo-linux` deve essere scrivibile dall'utente di compilazione. L'installazione delle dipendenze è un'operazione esplicita di sistema; il driver non usa `sudo` automaticamente. L'output è `src/out/Cosmo-linux-x64/`. Packaging, integrazione desktop, portachiavi e distribuzioni supportate devono essere collaudati.
-
-### Android ARM64
-
-**La compilazione Chromium per Android richiede un host Linux x64.** Android Studio e l'SDK Android su Windows non sostituiscono questo requisito. Il target iniziale è un APK ARM64 per dispositivi compatibili con il livello Android richiesto da Chromium; il livello minimo va verificato nel manifest finale.
-
-```sh
-python3 tools/chromium.py doctor --target android-arm64 --workspace /srv/cosmo-android
-python3 tools/chromium.py sync --target android-arm64 --workspace /srv/cosmo-android
-sudo /srv/cosmo-android/src/build/install-build-deps.sh
-python3 tools/chromium.py configure --target android-arm64 --workspace /srv/cosmo-android
-python3 tools/chromium.py build --target android-arm64 --workspace /srv/cosmo-android
-```
-
-Il package configurato è `info.cosmonet.browser`; il target GN è `chrome_public_apk`. L'output atteso è sotto `src/out/Cosmo-android-arm64/apks/`. Non è ancora stato compilato o installato su dispositivo in questo percorso.
-
-Android richiede comunque una firma crittografica per installare un APK. Per uso personale non serve acquistare un certificato: si può usare una chiave locale di sviluppo. Per conservare gli aggiornamenti sullo stesso dispositivo sarà necessario mantenere la stessa identità di firma. Il repository non contiene chiavi private e non richiede firma commerciale Windows.
-
-Riferimenti upstream: [Windows](https://chromium.googlesource.com/chromium/src/+/main/docs/windows_build_instructions.md), [Linux](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/build_instructions.md), [Android](https://chromium.googlesource.com/chromium/src/+/main/docs/android_build_instructions.md).
-
-## Password e dati locali
-
-Il nuovo percorso non usa né importa automaticamente il file `passwords.json` del prototipo. Non inserire password reali nel vecchio gestore.
-
-Le modifiche native iniziali:
-
-- fanno restituire `false` al controllo di abilitazione della sincronizzazione;
-- impediscono la costruzione dell'archivio password associato a un account;
-- mantengono il backend desktop nativo;
-- sostituiscono il backend Android dipendente dai servizi Google con il backend vuoto già previsto da Chromium;
-- disabilitano il backup dell'app nel manifest Android;
-- separano i percorsi profilo desktop da Chromium.
-
-**Queste sono modifiche ai sorgenti, non ancora garanzie runtime della build finale.** Prima di abilitare password reali occorre verificare cifratura, chiavi e comportamento dopo riavvio. Su Linux è necessario collaudare Secret Service/KWallet e rifiutare eventuali fallback deboli. Su Android va implementato un vault sul dispositivo con chiavi protette da Android Keystore: il salvataggio è attualmente non disponibile, anziché essere delegato a un servizio Google.
-
-L'assenza di sincronizzazione non protegge automaticamente da malware sul dispositivo, account di sistema compromessi, estensioni dannose o backup del sistema operativo. I test di accettazione dovranno comprendere l'ispezione delle richieste di rete relative alle credenziali e l'assenza di password in log o file di testo.
-
-## Modifiche native e aggiornamenti
-
-`chromium/patches/cosmo-browser.patch` rende leggibili le modifiche. `series.json` ne contiene i contesti e gli hash. Il driver controlla il commit del checkout e tutti i file coinvolti prima di scrivere: se un file differisce, interrompe l'operazione senza iniziare l'applicazione. Applicare nuovamente la stessa serie è consentito e non duplica le modifiche.
-
-Per rigenerare la serie dopo una modifica intenzionale:
-
-```sh
-node tools/python.cjs tools/fetch-upstream.py
-node tools/python.cjs tools/make-patches.py
-npm run test:upstream
-git diff -- chromium/
-```
-
-Un aggiornamento di versione richiede la scelta e verifica di un nuovo commit ufficiale, aggiornamento del lock, revisione di ogni modifica, nuove build native e test sui tre sistemi. Non aggiornare silenziosamente il motore su un ramo diverso e non ignorare errori di contesto. L'updater del prodotto è ancora da implementare: le prime build sono strumenti di sviluppo.
-
-## CI
-
-`Verify Cosmo Browser` esegue i test JavaScript e i controlli delle modifiche upstream su Windows e Linux. Su Linux esegue anche il test dell'estensione in Chromium reale e conserva i pacchetti di sviluppo e gli screenshot. Non compila l'intero motore e non pubblica installer.
-
-`Chromium development build (self-hosted)` è un workflow manuale per un builder dedicato con etichetta `cosmo-chromium` e sistema operativo coerente con il target. Richiede Node, Python, prerequisiti nativi e un workspace persistente. Non si avvia dalle pull request e non pubblica release. Prima di riusare un workspace già personalizzato, le modifiche devono essere revisionate e gestite esplicitamente: `sync` rifiuta un checkout sporco.
-
-## Prossime tappe e criteri di accettazione
-
-1. Installare i prerequisiti mancanti e compilare la prima build Windows; verificare che le modifiche native siano accettate dal compilatore.
-2. Collaudare navigazione, schede, popup, download, PDF, permessi, video e ripristino sessioni.
-3. Validare salvataggio password desktop locale, cifratura e assenza di trasmissione account.
-4. Completare branding, icone, identità installer e integrazione del modulo Cosmo Home. Gli identificatori dei servizi Windows richiedono revisione prima di un installer installabile accanto a Chromium.
-5. Compilare e collaudare Linux, compresi sandbox, dipendenze e portachiavi.
-6. Compilare Android; realizzare e verificare password locali, temi e strumenti CosmoNet per mobile. Non dichiarare supportate le estensioni desktop senza un'implementazione dedicata.
-7. Aggiungere packaging, aggiornamenti verificabili e misurazioni delle prestazioni su hardware reale.
-
-L'obiettivo "le funzioni migliori dei browser" sarà tradotto in interventi verificabili: gestione schede e sospensione, lettura, blocco dei contenuti, strumenti di privacy, ricerca, accessibilità e personalizzazione. L'elenco non costituisce una promessa di funzioni già presenti.
-
-## Contributi, licenza e uso personale
-
-Per contribuire, aprire una issue o una pull request con il problema concreto, la modifica proposta e i test eseguiti. Evitare segreti, profili personali, archivi password, chiavi di firma e binari nel repository.
-
-Il manifest storico dichiara MIT, ma manca ancora un file `LICENSE` del progetto: la licenza va formalizzata prima della distribuzione. Questa fase non introduce una nuova licenza o restrizioni commerciali sul codice. L'intenzione di prodotto è distribuirlo gratuitamente per uso personale, senza monetizzazione. Chromium e le dipendenze mantengono le proprie licenze e attribuzioni, da includere nei pacchetti finali.
-
-Repository: [CosmoNetinfo/cosmonet-browser](https://github.com/CosmoNetinfo/cosmonet-browser). Sito: [cosmonet.info](https://www.cosmonet.info/).
+[Repository](https://github.com/CosmoNetinfo/cosmonet-browser) · [CosmoNet](https://www.cosmonet.info/) · [Sicurezza](SECURITY.md)

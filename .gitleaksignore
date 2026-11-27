@@ -1,0 +1,5 @@
+# Two immutable historical findings are public SHA-256 digests of upstream source
+# files, independently verified against Chromium, not credentials. No file/rule is
+# globally excluded. Current lock schema separates paths from digest fields.
+228ddcb15a5697bd9ce62bba4c1d41d791c605eb:chromium/upstream.lock.json:generic-api-key:21
+228ddcb15a5697bd9ce62bba4c1d41d791c605eb:chromium/upstream.lock.json:generic-api-key:22

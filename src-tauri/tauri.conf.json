@@ -1,46 +1,21 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "cosmonet-browser",
-  "version": "1.2.1",
+  "productName": "Cosmo Browser",
+  "version": "0.3.0",
   "identifier": "info.cosmonet.browser",
-  "build": {
-    "beforeDevCommand": "",
-    "frontendDist": "../src-web"
-  },
+  "build": { "frontendDist": "../app", "beforeDevCommand": "npm run prepare:app", "beforeBuildCommand": "npm run prepare:app" },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "Cosmonet Browser",
-        "url": "index.html",
-        "width": 1400,
-        "height": 900,
-        "resizable": true,
-        "fullscreen": false,
-        "decorations": true,
-        "transparent": false,
-        "devtools": true
-      }
-    ],
+    "windows": [{ "label": "main", "title": "Cosmo Browser", "url": "index.html", "width": 1280, "height": 850, "minWidth": 360, "minHeight": 540 }],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ]
-  },
-  "plugins": {
-    "shell": {
-      "open": true
-    }
+    "targets": ["nsis"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "windows": { "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true } },
+    "android": { "minSdkVersion": 28 }
   }
 }

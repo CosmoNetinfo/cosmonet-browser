@@ -1,291 +1,178 @@
-use tauri::{command, AppHandle, Manager, Runtime, WebviewWindowBuilder};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::fs;
+use std::{collections::HashSet, fs, sync::Mutex};
+use tauri::{AppHandle, Manager};
 
-// --- Gestione Browser View (Vero Browser) ---
+#[cfg(desktop)]
+mod desktop;
+#[cfg(windows)]
+mod vault;
 
-#[command]
-async fn create_browser_window<R: Runtime>(
-    app: AppHandle<R>,
-    label: String,
-    url: String,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-) -> Result<(), String> {
-    // Crea la finestra contenuto in modo sicuro
-    let tauri_url = if url.starts_with("http") {
-        match tauri::Url::parse(&url) {
-            Ok(u) => tauri::WebviewUrl::External(u),
-            Err(e) => return Err(format!("URL non valido: {}", e)),
+#[derive(Default)]
+struct BrowserState(Mutex<HashSet<String>>);
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Bounds { pub x: f64, pub y: f64, pub width: f64, pub height: f64 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Request {
+    pub action: String,
+    #[serde(default)] pub label: String,
+    #[serde(default)] pub url: String,
+    #[serde(default)] pub bounds: Option<Bounds>,
+    #[serde(default)] pub data: Value,
+}
+
+pub fn web_url(input: &str) -> Result<url::Url, String> {
+    let parsed = url::Url::parse(input).map_err(|_| "Indirizzo non valido")?;
+    if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none()
+        || !parsed.username().is_empty() || parsed.password().is_some() || input.len() > 8192 {
+        return Err("Sono consentiti solo indirizzi web http e https senza credenziali".into());
+    }
+    Ok(parsed)
+}
+
+fn trusted_ui(webview: &tauri::Webview) -> bool {
+    webview.label() == "main" && webview.url().map(|url| {
+        (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
+            || (matches!(url.scheme(), "http" | "https") && url.host_str() == Some("tauri.localhost"))
+    }).unwrap_or(false)
+}
+
+fn validate_bounds(bounds: &Bounds) -> Result<(), String> {
+    if [bounds.x, bounds.y, bounds.width, bounds.height].iter().any(|v| !v.is_finite())
+        || bounds.x < 0.0 || bounds.y < 0.0 || bounds.width < 1.0 || bounds.height < 1.0
+        || bounds.width > 20000.0 || bounds.height > 20000.0 {
+        return Err("Dimensioni non valide".into());
+    }
+    Ok(())
+}
+
+fn smoke_mode() -> bool { std::env::args().any(|arg|arg=="--smoke-test") }
+
+fn profile_dir(app:&AppHandle)->Result<std::path::PathBuf,String> {
+    if smoke_mode() { return app.path().app_cache_dir().map(|p|p.join("smoke-profile")).map_err(|_|"Archivio non disponibile".into()); }
+    app.path().app_data_dir().map_err(|_|"Archivio non disponibile".into())
+}
+
+#[tauri::command]
+async fn browser_command(webview: tauri::Webview, app: AppHandle, mut request: Request) -> Result<Value, String> {
+    if !trusted_ui(&webview) { return Err("Comando consentito solo all'interfaccia locale".into()); }
+    if request.action=="smoke_finish" && smoke_mode() {
+        let count=app.state::<BrowserState>().0.lock().map_err(|_|"Stato non disponibile")?.len();
+        if count!=1 { return Err("Smoke test: numero schede inatteso".into()); }
+        if let Ok(path)=std::env::var("COSMO_SMOKE_REPORT") {
+            fs::write(path,serde_json::to_vec(&json!({"ok":true,"openTabs":count,"nativePages":request.data})).map_err(|_|"Report non disponibile")?).map_err(|_|"Report non disponibile")?;
         }
-    } else if url.ends_with(".html") || !url.contains('.') {
-        tauri::WebviewUrl::App(url.clone().into())
-    } else {
-        match tauri::Url::parse(&format!("https://{}", url)) {
-            Ok(u) => tauri::WebviewUrl::External(u),
-            Err(e) => return Err(format!("URL non valido: {}", e)),
+        if std::env::var("COSMO_SMOKE_CAPTURE").ok().as_deref()!=Some("1") { app.exit(0); }
+        return Ok(json!({"ok":true}));
+    }
+    if let Some(bounds) = &request.bounds { validate_bounds(bounds)?; }
+    if matches!(request.action.as_str(), "create" | "navigate") && request.url != "home" {
+        request.url = web_url(&request.url)?.to_string();
+    }
+    #[cfg(target_os = "android")]
+    {
+        if matches!(request.action.as_str(), "create" | "navigate") && request.url == "home" {
+            request.data = json!({"html":include_str!("../../app/home.html")});
         }
+        if request.action == "reader" {
+            request.data = json!({"script":include_str!("../../modules/cosmonet-reader/reader.js")});
+        }
+        if request.action == "console" || request.action == "devtools" {
+            request.data = json!({"script":concat!(include_str!("../../app/vendor/eruda.js"),"\n;if(!window.__cosmoEruda){eruda.init();window.__cosmoEruda=true;}eruda.show();")});
+        }
+    }
+    if request.action == "profile_load" || request.action == "profile_save" {
+        return profile(&app, &request);
+    }
+    let global = app.state::<BrowserState>();
+    {
+        let mut labels = global.0.lock().map_err(|_| "Stato non disponibile")?;
+        if !request.label.starts_with("tab-") || request.label.len() > 80
+            || !request.label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            return Err("Identificativo scheda non valido".into());
+        }
+        if request.action == "create" {
+            if labels.len() >= 32 || labels.contains(&request.label) { return Err("Limite schede raggiunto".into()); }
+            labels.insert(request.label.clone());
+        } else if !labels.contains(&request.label) { return Err("Scheda non trovata".into()); }
+    }
+    #[cfg(desktop)]
+    let result = desktop::dispatch(&app, &request).await;
+    #[cfg(target_os = "android")]
+    let result = tauri_plugin_browser::dispatch(&app, &serde_json::to_value(&request).map_err(|_| "Richiesta non valida")?);
+    #[cfg(target_os = "ios")]
+    let result: Result<Value, String> = Err("Piattaforma non supportata".into());
+    if (request.action == "create" && result.is_err()) || (request.action == "close" && result.is_ok()) {
+        if let Ok(mut labels) = global.0.lock() { labels.remove(&request.label); }
+    }
+    result
+}
+
+fn profile(app: &AppHandle, request: &Request) -> Result<Value, String> {
+    let dir = profile_dir(app)?;
+    fs::create_dir_all(&dir).map_err(|_| "Archivio non disponibile")?;
+    let file = dir.join("browser-profile.json");
+    if request.action == "profile_load" {
+        if !file.exists() { return Ok(json!({"theme":if smoke_mode(){std::env::var("COSMO_SMOKE_THEME").unwrap_or("system".into())}else{"system".into()},"bookmarks":[],"history":[],"smoke":smoke_mode()})); }
+        if fs::metadata(&file).map_err(|_|"Profilo non disponibile")?.len()>2_000_000 { return Err("Profilo troppo grande".into()); }
+        let mut result:Value=serde_json::from_slice(&fs::read(file).map_err(|_| "Lettura non riuscita")?).map_err(|_| "Profilo non valido")?;
+        if !result.is_object() { return Err("Profilo non valido".into()); }
+        result["smoke"]=json!(smoke_mode());
+        if smoke_mode() { if let Ok(theme)=std::env::var("COSMO_SMOKE_THEME") { result["theme"]=json!(theme); } }
+        return Ok(result);
+    }
+    // Only non-sensitive, bounded preferences are stored in JSON.
+    let theme = request.data.get("theme").and_then(Value::as_str).unwrap_or("system");
+    if !["system", "light", "dark", "sand"].contains(&theme) { return Err("Tema non valido".into()); }
+    let sanitize = |field: &str, limit: usize| -> Vec<Value> {
+        request.data.get(field).and_then(Value::as_array).map(|items| items.iter().take(limit).filter_map(|item| {
+            let url = web_url(item.get("url")?.as_str()?).ok()?;
+            let title: String = item.get("title").and_then(Value::as_str).unwrap_or("").chars().take(256).collect();
+            Some(json!({"url":url.as_str(),"title":title}))
+        }).collect()).unwrap_or_default()
     };
-
-    // Se esiste già, naviga e ridimensiona
-    if let Some(window) = app.get_webview_window(&label) {
-        if let tauri::WebviewUrl::External(u) = tauri_url {
-            window.navigate(u).map_err(|e| e.to_string())?;
-        } else if let tauri::WebviewUrl::App(p) = tauri_url {
-            let js = format!("window.location.href = '{}'", p.to_string_lossy().replace("'", "\\'"));
-            let _ = window.eval(&js);
-        }
-        // Aggiorna posizione/dimensione (Screen-absolute for WebviewWindow)
-        let _ = window.set_position(tauri::LogicalPosition { x, y });
-        let _ = window.set_size(tauri::LogicalSize { width, height });
-        let _ = window.show();
-        return Ok(());
-    }
-
-    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
-
-    // Builder per la finestra child (decorations: false la rende parte dell'interfaccia)
-    let child = WebviewWindowBuilder::new(&app, &label, tauri_url)
-        .title("Content")
-        .decorations(false)
-        .resizable(true)
-        .visible(false)
-        .skip_taskbar(true)
-        .devtools(true)
-        .position(x, y)
-        .inner_size(width, height)
-        .parent(&main_window)
-        .map_err(|e| e.to_string())?
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    child.show().map_err(|e| e.to_string())?;
-    Ok(())
+    let safe = json!({"theme":theme,"bookmarks":sanitize("bookmarks",500),"history":sanitize("history",1000)});
+    let bytes = serde_json::to_vec(&safe).map_err(|_| "Profilo non valido")?;
+    let temporary = dir.join("browser-profile.tmp");
+    fs::write(&temporary, bytes).map_err(|_| "Salvataggio non riuscito")?;
+    fs::rename(temporary, file).map_err(|_| "Salvataggio non riuscito")?;
+    Ok(safe)
 }
 
-#[command]
-async fn close_browser_window<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.close().map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[command]
-async fn set_browser_visibility<R: Runtime>(app: AppHandle<R>, label: String, visible: bool) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        if visible {
-            window.show().map_err(|e| e.to_string())?;
-            window.set_focus().map_err(|e| e.to_string())?;
-        } else {
-            window.hide().map_err(|e| e.to_string())?;
-        }
-    }
-    Ok(())
-}
-
-#[command]
-async fn resize_browser_window<R: Runtime>(app: AppHandle<R>, label: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.set_position(tauri::LogicalPosition { x, y }).map_err(|e| e.to_string())?;
-        window.set_size(tauri::LogicalSize { width, height }).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[command]
-async fn navigate_browser<R: Runtime>(app: AppHandle<R>, label: String, url: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        // URL locali (es. home.html)
-        if url.ends_with(".html") || url == "home" || (!url.starts_with("http") && !url.contains('.')) {
-            let path = if url == "home" { "home.html" } else { &url };
-            let js = format!("window.location.href = '{}'", path.replace("'", "\\'"));
-            let _ = window.eval(&js);
-            return Ok(());
-        }
-        
-        let target_url = if url.starts_with("http") { url } else { format!("https://{}", url) };
-        if let Ok(u) = tauri::Url::parse(&target_url) {
-            window.navigate(u).map_err(|e| e.to_string())?;
-        } else {
-            let js = format!("window.location.href = '{}'", target_url.replace("'", "\\'"));
-            let _ = window.eval(&js);
-        }
-    }
-    Ok(())
-}
-
-#[command]
-async fn webview_reload<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        let _ = window.eval("location.reload()");
-    }
-    Ok(())
-}
-
-#[command]
-async fn open_browser_devtools<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        #[cfg(debug_assertions)]
-        {
-            window.open_devtools();
-        }
-        
-        let _ = window.eval("if (window.eruda) { eruda.show() } else { console.log('DevTools requested'); }");
-    }
-    Ok(())
-}
-
-// --- Comandi Esistenti ---
-
-#[command]
-async fn load_bookmarks<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("bookmarks.json");
-    if path.exists() {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&content).map_err(|e| e.to_string())
-    } else {
-        Ok(json!([]))
-    }
-}
-
-#[command]
-async fn save_bookmarks<R: Runtime>(app: AppHandle<R>, bookmarks: Value) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("bookmarks.json");
-    fs::write(path, serde_json::to_string_pretty(&bookmarks).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-}
-
-#[command]
-async fn load_history<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("history.json");
-    if path.exists() {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&content).map_err(|e| e.to_string())
-    } else {
-        Ok(json!([]))
-    }
-}
-
-#[command]
-async fn save_history<R: Runtime>(app: AppHandle<R>, history: Value) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("history.json");
-    fs::write(path, serde_json::to_string_pretty(&history).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-}
-
-#[command]
-async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("settings.json");
-    if path.exists() {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&content).map_err(|e| e.to_string())
-    } else {
-        Ok(json!({}))
-    }
-}
-
-#[command]
-async fn save_settings<R: Runtime>(app: AppHandle<R>, settings: Value) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("settings.json");
-    fs::write(path, serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-}
-
-#[command]
-async fn load_passwords<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("passwords.json");
-    if path.exists() {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&content).map_err(|e| e.to_string())
-    } else {
-        Ok(json!([]))
-    }
-}
-
-#[command]
-async fn save_passwords<R: Runtime>(app: AppHandle<R>, passwords: Value) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("passwords.json");
-    fs::write(path, serde_json::to_string_pretty(&passwords).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-}
-
-#[command]
-async fn get_app_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
-    app.path().app_data_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
-}
-
-#[command]
-async fn webview_go_back<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.eval("history.back()").map_err(|e: tauri::Error| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[command]
-async fn webview_go_forward<R: Runtime>(app: AppHandle<R>, label: String) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(&label) {
-        window.eval("history.forward()").map_err(|e: tauri::Error| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[command]
-async fn fetch_rss() -> Result<String, String> {
-    let url = "https://www.cosmonet.info/feed/";
-    let client = reqwest::Client::builder()
-        .user_agent("CosmonetBrowser/1.0")
-        .build()
-        .map_err(|e| e.to_string())?;
-        
-    let response = client.get(url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-        
-    response.text().await.map_err(|e| e.to_string())
-}
-
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::new()
-            .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout))
-            .build())
-        .invoke_handler(tauri::generate_handler![
-            load_bookmarks, save_bookmarks,
-            load_history, save_history,
-            load_settings, save_settings,
-            load_passwords, save_passwords,
-            get_app_path,
-            fetch_rss,
-            // Nuovi comandi browser
-            create_browser_window,
-            resize_browser_window,
-            navigate_browser,
-            webview_reload,
-            open_browser_devtools,
-            webview_go_back,
-            webview_go_forward,
-            close_browser_window,
-            set_browser_visibility
-        ])
-        .setup(|_app| {
+        .manage(BrowserState::default())
+        .plugin(tauri_plugin_browser::init())
+        .plugin(tauri::plugin::Builder::<tauri::Wry>::new("ui-boundary").on_navigation(|webview, url| {
+            if webview.label() != "main" { return true; }
+            (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
+                || (matches!(url.scheme(), "http" | "https") && url.host_str() == Some("tauri.localhost"))
+        }).build())
+        .setup(|app| {
+            if smoke_mode() && std::env::var("COSMO_SMOKE_CAPTURE").ok().as_deref()!=Some("1") { if let Some(window)=app.get_webview_window("main") { let _=window.hide(); } }
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![browser_command])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("Impossibile avviare Cosmo Browser");
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn rejects_non_web_targets() {
+        for input in ["javascript:alert(1)", "file:///etc/passwd", "data:text/html,x", "tauri://localhost"] {
+            assert!(web_url(input).is_err());
+        }
+        assert!(web_url("https://www.cosmonet.info/").is_ok());
+    }
+    #[test] fn bounds_reject_nan_and_negative() {
+        assert!(validate_bounds(&Bounds{x:0.0,y:0.0,width:f64::NAN,height:100.0}).is_err());
+        assert!(validate_bounds(&Bounds{x:-1.0,y:0.0,width:100.0,height:100.0}).is_err());
+    }
+}

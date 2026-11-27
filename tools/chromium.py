@@ -16,6 +16,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCT = json.loads((ROOT / "chromium/product.json").read_text(encoding="utf-8"))
 LOCK = json.loads((ROOT / "chromium/upstream.lock.json").read_text(encoding="utf-8"))
+if isinstance(LOCK["files"], list):
+    LOCK["files"] = {entry["path"]: entry["sha256"] for entry in LOCK["files"]}
 DEPOT_URL = "https://chromium.googlesource.com/chromium/tools/depot_tools.git"
 
 

@@ -1,20 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { normalizeSettings, safeWebUrl, searchUrl, createSettingsStore } from '../extensions/cosmo-home/model.mjs';
 
 test('shortcuts accept web URLs and reject executable, file and credential URLs', () => {
   assert.equal(safeWebUrl('example.com'), 'https://example.com/');
   assert.equal(safeWebUrl('http://localhost:8080/a'), 'http://localhost:8080/a');
+  const credentialUrl = new URL('https://example.com');
+  credentialUrl.username = 'test-user';
+  credentialUrl.password = randomUUID();
   for (const input of ['javascript:alert(1)', 'data:text/html,<script>', 'file:///etc/passwd',
-    'chrome://settings', 'https://user:password@example.com', 'https://exa\nmple.com', '', null]) {
+    'chrome://settings', credentialUrl.href, 'https://exa\nmple.com', '', null]) {
     assert.equal(safeWebUrl(input), null, String(input));
   }
 });
 
 test('settings discard unknown fields and unsafe links from local storage', () => {
   const settings = normalizeSettings({ theme: 'evil', accent: 'red;url(https://evil.test)',
-    engine: '__proto__', password: 'must not persist',
+    engine: '__proto__', password: randomUUID(),
     links: [{ name: 'unsafe', url: 'javascript:alert(1)' }, { name: ' Example ', url: 'example.com' }] });
   assert.equal(settings.theme, 'system');
   assert.equal(settings.engine, 'duckduckgo');

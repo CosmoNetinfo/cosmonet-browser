@@ -12,9 +12,7 @@ FILES = [
     "chrome/VERSION",
     "chrome/app/theme/chromium/BRANDING",
     "chrome/app/theme/chromium/product_logo_16.png",
-    "chrome/app/theme/chromium/product_logo_22.png",
     "chrome/app/theme/chromium/product_logo_24.png",
-    "chrome/app/theme/chromium/product_logo_32.png",
     "chrome/app/theme/chromium/product_logo_48.png",
     "chrome/app/theme/chromium/product_logo_64.png",
     "chrome/app/theme/chromium/product_logo_128.png",
@@ -46,6 +44,8 @@ def get(url):
 def main():
     lock_path = ROOT / "chromium" / "upstream.lock.json"
     previous = json.loads(lock_path.read_text()) if lock_path.exists() else None
+    if previous and isinstance(previous["files"], list):
+        previous["files"] = {entry["path"]: entry["sha256"] for entry in previous["files"]}
     lock = {"version": VERSION, "revision": REVISION,
             "repository": "https://chromium.googlesource.com/chromium/src.git",
             "files": {}}
@@ -80,6 +80,7 @@ def main():
         depot = json.loads(get("https://chromium.googlesource.com/chromium/tools/depot_tools/+/HEAD?format=JSON").decode().split("\n", 1)[1])
         lock["depot_tools_revision"] = depot["commit"]
     destination = ROOT / "chromium" / "upstream.lock.json"
+    lock["files"] = [{"path": path, "sha256": digest} for path, digest in lock["files"].items()]
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
     print(f"Locked Chromium {VERSION}, depot_tools {lock['depot_tools_revision']}")

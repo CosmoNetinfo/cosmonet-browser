@@ -1,5 +1,5 @@
 {
-  "description": "Cosmo Browser: browser gratuito in sviluppo basato su Chromium per Windows, Linux e Android. Personalizzazioni CosmoNet, logo e favicon, temi ed estensioni proprie. Password solo sul dispositivo come requisito; build native e funzioni mobile ancora da completare. Dettagli e istruzioni nel README.",
+  "description": "Cosmo Browser: browser gratuito in sviluppo per Windows e Android, con Tauri, Rust e webview native. Brand CosmoNet, schede, temi, moduli propri e credenziali cifrate sul dispositivo. Obiettivo: installer e APK con GitHub Actions gratuite. Linux rimandato. Funzioni e stato reale nel README.",
   "homepage": "https://www.cosmonet.info/",
-  "topics": ["cosmo-browser", "cosmonet", "chromium", "browser", "windows", "linux", "android", "privacy", "browser-extension", "themes"]
+  "topics": ["cosmo-browser", "cosmonet", "tauri", "rust", "webview2", "browser", "windows", "android", "privacy", "plugins", "themes", "github-actions"]
 }

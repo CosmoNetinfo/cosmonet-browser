@@ -6,7 +6,7 @@
   "androidPackage": "info.cosmonet.browser",
   "platforms": {
     "windows-x64": { "host": "Windows", "target": "chrome", "status": "source-preparation" },
-    "linux-x64": { "host": "Linux", "target": "chrome", "status": "source-preparation" },
+    "linux-x64": { "host": "Linux", "target": "chrome", "status": "deferred" },
     "android-arm64": { "host": "Linux", "target": "chrome_public_apk", "status": "source-preparation" }
   },
   "privacy": {

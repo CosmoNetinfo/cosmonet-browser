@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / ".work/upstream"
 LOCK = json.loads((ROOT / "chromium/upstream.lock.json").read_text())
+if isinstance(LOCK["files"], list):
+    LOCK["files"] = {entry["path"]: entry["sha256"] for entry in LOCK["files"]}
 
 
 def main():

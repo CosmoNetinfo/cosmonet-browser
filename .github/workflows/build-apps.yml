@@ -1,0 +1,127 @@
+name: Build Windows installer and Android APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md', 'docs/**', 'branding/logo-prompt.txt']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run prepare:app
+      - name: Scan full history for secrets (redacted)
+        run: npm run secrets:scan
+
+  windows:
+    needs: source-checks
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+      - run: npm ci --ignore-scripts
+      - run: npm run prepare:app
+      - name: Test Rust URL guards and local DPAPI encryption
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+      - name: Build unsigned Windows installer
+        run: npm run build:windows
+      - name: Verify real native browser tabs
+        run: node tools/native-smoke.cjs
+      - name: Prepare portable executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist/windows -Force | Out-Null
+          Copy-Item -LiteralPath src-tauri/target/release/cosmo-browser.exe -Destination dist/windows/Cosmo-Browser-Portable.exe
+          Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Copy-Item -Destination dist/windows
+          Get-ChildItem dist/windows/*.exe | Get-FileHash -Algorithm SHA256 | Select-Object Hash,Path | ConvertTo-Json | Set-Content dist/windows/checksums.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cosmo-Browser-Windows
+          path: dist/windows/
+          if-no-files-found: error
+          retention-days: 7
+
+  android:
+    needs: source-checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      COSMO_ANDROID_KEYSTORE_B64: ${{ secrets.COSMO_ANDROID_KEYSTORE_B64 }}
+      COSMO_ANDROID_STORE_PASSWORD: ${{ secrets.COSMO_ANDROID_STORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform and NDK
+        run: sdkmanager 'platforms;android-37' 'build-tools;37.0.0' 'ndk;28.2.13676358'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+      - run: npm ci --ignore-scripts
+      - run: npm run prepare:app
+      - name: Prepare private personal signing key
+        run: node tools/android-keystore.cjs
+      - name: Build signed personal Android APK
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          npm run build:android
+      - name: Verify APK signatures and collect packages
+        run: |
+          mkdir -p dist/android
+          find src-tauri/gen/android -type f -name '*.apk' -path '*/outputs/*' ! -name '*unsigned*' -print -exec cp {} dist/android/ \;
+          test -n "$(find dist/android -name '*.apk' -print -quit)"
+          for apk in dist/android/*.apk; do "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify "$apk"; done
+          (cd dist/android && sha256sum *.apk > SHA256SUMS)
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cosmo-personal.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cosmo-Browser-Android
+          path: dist/android/
+          if-no-files-found: error
+          retention-days: 7

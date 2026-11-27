@@ -1,0 +1,8 @@
+{
+  "id": "cosmonet-reader",
+  "name": "Lettura CosmoNet",
+  "version": "0.1.0",
+  "entry": "reader.js",
+  "allowedOrigins": ["https://www.cosmonet.info", "https://cosmonet.info"],
+  "capabilities": ["page-style"]
+}
