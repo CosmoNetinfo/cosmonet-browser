@@ -8,6 +8,8 @@ let saves = Promise.resolve();
 let nativePages=0;
 let android=false;
 let updateBusy=false;
+let openingPanel=false;
+let panelTransition=0;
 const native = (action, extra = {}) => window.__TAURI__.core.invoke('browser_command', {
   request:{action,label:active ?? '',url:'',data:null,...extra}
 });
@@ -84,9 +86,18 @@ function event(data) {
   renderTabs();
 }
 async function openDialog(id) {
+  const transition=++panelTransition;
+  openingPanel=true;
   for(const d of document.querySelectorAll('dialog[open]'))d.close();
-  if(active)await native('hide');
-  $(id).showModal();
+  try{
+    if(active)await native('overlay',{data:{open:true}});
+    if(transition===panelTransition)$(id).showModal();
+  }finally{
+    if(transition===panelTransition){
+      openingPanel=false;
+      if(active&&!document.querySelector('dialog[open]'))native('overlay',{data:{open:false}}).catch(report);
+    }
+  }
 }
 async function showList(kind) {
   $('list-title').textContent=kind==='bookmarks'?'Preferiti':'Cronologia';$('list-items').replaceChildren();
@@ -202,7 +213,7 @@ $('vault-form').onsubmit=async event=>{
 for(const button of document.querySelectorAll('[data-close]'))button.onclick=()=>$(button.dataset.close).close();
 for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>{
   if(dialog.id==='vault')$('vault-form').reset();
-  setTimeout(()=>{if(active&&!document.querySelector('dialog[open]'))activate(active).catch(report);},0);
+  setTimeout(()=>{if(active&&!openingPanel&&!document.querySelector('dialog[open]'))native('overlay',{data:{open:false}}).catch(report);},0);
 });
 let resizing=false;
 new ResizeObserver(()=>{if(resizing||!active)return;resizing=true;requestAnimationFrame(()=>{native('bounds',{bounds:bounds()}).catch(report);resizing=false;});}).observe($('content'));
@@ -247,6 +258,15 @@ try {
       await until(()=>tabs.get(second)?.url===two&&tabs.get(second)?.title==='Cosmo smoke two'&&!tabs.get(second)?.loading);
     }
     await activate(first);await closeTab(second);
-    await native('smoke_finish',{data:{loaded:nativePages,created:2,switched:true,closed:true,webNavigation:!!saved.smokeUrl}});
+    // Check actual WebView2 visibility, not just DOM styles or intended state.
+    await openDialog('tools');await openDialog('settings');
+    await activate(first);
+    if((await native('visibility')).visible!==0)throw Error('La scheda copre le impostazioni');
+    await openDialog('vault');await openDialog('list');
+    if((await native('visibility')).visible!==0)throw Error('La scheda copre un pannello');
+    $('list').close();
+    const end=Date.now()+5000;
+    while((await native('visibility')).visible!==1){if(Date.now()>end)throw Error('Scheda non ripristinata dopo la chiusura del pannello');await new Promise(r=>setTimeout(r,50));}
+    await native('smoke_finish',{data:{loaded:nativePages,created:2,switched:true,closed:true,panels:true,webNavigation:!!saved.smokeUrl}});
   }
 }catch(error){report(error);}

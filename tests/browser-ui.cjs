@@ -18,9 +18,23 @@ const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await context.addInitScript(()=>{
    window.testCommands=[];
+   window.testVisibleTabs=[];
+   window.testOverlayOpen=false;
+   window.testActiveTab=null;
    const defaults={theme:'system',engine:'duckduckgo',siteMode:'mobile',rememberHistory:true,autoUpdates:false,bookmarks:[],history:[{url:'https://example.com/',title:'Existing'}]};
    window.__TAURI__={event:{listen:async()=>{}},core:{invoke:async(_, {request:r})=>{
     window.testCommands.push(r);
+    if(r.action==='activate'){window.testActiveTab=r.label;window.testVisibleTabs=testOverlayOpen?[]:[r.label];}
+    if(r.action==='overlay'){
+     window.testOverlayOpen=r.data.open;
+     window.testVisibleTabs=r.data.open?[]:(testActiveTab?[testActiveTab]:[]);
+     await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    if(r.action==='hide'){
+     window.testVisibleTabs=[];
+     // The native view hides before its delayed IPC acknowledgement arrives.
+     await new Promise(resolve=>setTimeout(resolve,100));
+    }
     if(r.action==='profile_load')return {...defaults,...JSON.parse(localStorage.getItem('testProfile')||'{}'),platform:'android',version:'0.3.1'};
     if(r.action==='profile_save'){localStorage.setItem('testProfile',JSON.stringify(r.data));return r.data;}
     if(r.action==='vault_list')return {entries:[]};
@@ -40,10 +54,18 @@ const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
    await page.setViewportSize({width,height:844});
    await page.locator('#menu').click();await page.locator('#show-settings').click();
    await page.locator('#settings').waitFor({state:'visible'});
+   await page.waitForTimeout(120);
+   assert.deepEqual(await page.evaluate(()=>testVisibleTabs),[],'A delayed native reply must not restore a tab over Settings');
+   if(width===390){
+    await page.evaluate(()=>window.dispatchEvent(new CustomEvent('android-browser-event',{detail:{newTab:'https://example.net/'}})));
+    await page.waitForTimeout(150);
+    assert.deepEqual(await page.evaluate(()=>testVisibleTabs),[],'A new tab must remain hidden while Settings is open');
+   }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    const box=await page.locator('#settings').boundingBox();assert.ok(box.width<=width+1);
    if(width<=600){assert.equal(Math.round(box.width),width);assert.ok((await page.locator('#menu').boundingBox()).height>=44);}
    await page.locator('[data-close=settings]').click();
+   await page.waitForFunction(()=>testVisibleTabs.length===1);
   }
   await page.setViewportSize({width:390,height:844});
   await page.locator('#menu').click();await page.locator('#show-settings').click();
@@ -69,6 +91,7 @@ const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
   await page.locator('#settings-clear-history').click();
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('testProfile')).history.length===0);
   await page.locator('#settings-vault').click();await page.locator('#vault').waitFor({state:'visible'});
+  assert.deepEqual(await page.evaluate(()=>testVisibleTabs),[],'Switching Settings to Passwords must not reveal content');
   await page.locator('[data-close=vault]').click();
   await page.locator('#menu').click();await page.locator('#show-settings').click();
   await page.locator('#check-updates').click();
@@ -81,6 +104,7 @@ const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('testProfile')).autoUpdates===true);
   await page.reload();await page.locator('#update-notice').waitFor({state:'visible'});
   await page.locator('#open-update-settings').click();await page.locator('#settings').waitFor({state:'visible'});
+  assert.deepEqual(await page.evaluate(()=>testVisibleTabs),[],'Switching update notice to Settings must not reveal content');
   await page.goto(origin+'/home.html');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.ok((await page.locator('input').boundingBox()).height>=44);

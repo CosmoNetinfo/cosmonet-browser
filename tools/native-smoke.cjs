@@ -43,6 +43,7 @@ async function main(){
    assert.equal(result.ok,true);assert.equal(result.openTabs,1);
    assert.ok(result.nativePages.loaded>=1);assert.equal(result.nativePages.created,2);
    assert.equal(result.nativePages.switched,true);assert.equal(result.nativePages.closed,true);
+   assert.equal(result.nativePages.panels,true);
    if(!capture)assert.equal(result.nativePages.webNavigation,true);
    console.log(capture?'PASS: native tab lifecycle and owned-window capture.':'PASS: real HTTP navigation, URL sync, native back/forward and integrated tab lifecycle.');
   }catch(error){console.error(error.message);process.exitCode=1;}

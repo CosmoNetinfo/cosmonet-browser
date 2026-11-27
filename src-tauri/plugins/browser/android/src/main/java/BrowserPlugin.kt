@@ -39,6 +39,8 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
     private val tabs = mutableMapOf<String, WebView>()
     private val homeTabs = mutableSetOf<String>()
     private val desktopTabs = mutableSetOf<String>()
+    private var overlayOpen = false
+    private var activeTab: String? = null
     private val updates by lazy { BrowserUpdates(activity) }
     private val keyAlias = "info.cosmonet.browser.vault.v1"
     private val vaultFile by lazy { AtomicFile(File(activity.filesDir, "cosmo-vault.aes")) }
@@ -96,6 +98,10 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
         params.leftMargin = ui[0] - parent[0] + (value.getDouble("x") * density).toInt()
         params.topMargin = ui[1] - parent[1] + (value.getDouble("y") * density).toInt()
         view.layoutParams = params
+    }
+
+    private fun syncVisibility() {
+        tabs.forEach { (label, view) -> view.visibility = if (!overlayOpen && label == activeTab) View.VISIBLE else View.GONE }
     }
 
     private fun siteMode(label: String, view: WebView, desktop: Boolean) {
@@ -255,6 +261,10 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
                 val action = args.getString("action"); val label = args.getString("label")
                 val data = args.optJSONObject("data") ?: JSONObject()
                 if (action in listOf("update_check", "update_download", "update_install")) { updates.dispatch(action,invoke);return@runOnUiThread }
+                if (action == "overlay") {
+                    overlayOpen=data.getBoolean("open");syncVisibility()
+                    invoke.resolve(JSObject());return@runOnUiThread
+                }
                 if (action == "create") {
                     val view = create(label, args.getJSONObject("bounds"))
                     siteMode(label, view, data.optBoolean("desktop", false))
@@ -269,7 +279,7 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
                 val view = tabs[label] ?: error("Scheda non disponibile")
                 if (action.startsWith("vault_")) { invoke.resolve(vault(action, view, data)); return@runOnUiThread }
                 when (action) {
-                    "activate" -> tabs.forEach { (key, value) -> value.visibility = if (key == label) View.VISIBLE else View.GONE }
+                    "activate" -> { activeTab=label;syncVisibility() }
                     "hide" -> view.visibility = View.GONE
                     "bounds" -> bounds(view, args.getJSONObject("bounds"))
                     "navigate" -> if (args.getString("url") == "home") {

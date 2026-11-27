@@ -13,6 +13,11 @@ mod updates;
 #[derive(Default)]
 struct BrowserState(Mutex<HashSet<String>>);
 
+#[derive(Default)]
+struct Presentation { overlay_open:bool, active:Option<String> }
+#[derive(Default)]
+struct PresentationState(Mutex<Presentation>);
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bounds { pub x: f64, pub y: f64, pub width: f64, pub height: f64 }
@@ -185,6 +190,7 @@ fn profile(app: &AppHandle, request: &Request) -> Result<Value, String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(BrowserState::default())
+        .manage(PresentationState::default())
         .plugin(tauri_plugin_browser::init())
         .plugin(tauri::plugin::Builder::<tauri::Wry>::new("ui-boundary").on_navigation(|webview, url| {
             if webview.label() != "main" { return true; }

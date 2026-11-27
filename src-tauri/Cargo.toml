@@ -1,6 +1,6 @@
 [package]
 name = "cosmo-browser"
-version = "0.3.1"
+version = "0.3.2"
 description = "Cosmo Browser: Tauri, Rust and native WebViews"
 authors = ["CosmoNet"]
 edition = "2021"

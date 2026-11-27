@@ -1,8 +1,21 @@
-use crate::{Bounds, BrowserState, Request};
+use crate::{Bounds, BrowserState, PresentationState, Request};
 use serde_json::{json, Value};
 use tauri::{webview::{NewWindowResponse, PageLoadEvent, WebviewBuilder}, AppHandle, Emitter, Manager, WebviewUrl};
 
 fn event(app: &AppHandle, data: Value) { let _ = app.emit_to("main", "browser-event", data); }
+
+fn sync_visibility(app:&AppHandle)->Result<(),String> {
+    let presentation=app.state::<PresentationState>();
+    let presentation=presentation.0.lock().map_err(|_|"Stato non disponibile")?;
+    let labels=app.state::<BrowserState>().0.lock().map_err(|_|"Stato non disponibile")?.clone();
+    for label in labels {
+        if let Some(view)=app.get_webview(&label) {
+            if !presentation.overlay_open && presentation.active.as_ref()==Some(&label) {view.show().map_err(|_|"Scheda non disponibile")?;}
+            else {view.hide().map_err(|_|"Scheda non disponibile")?;}
+        }
+    }
+    Ok(())
+}
 
 fn state(app: &AppHandle, label: &str) {
     #[cfg(windows)]
@@ -66,14 +79,31 @@ pub async fn dispatch(app: &AppHandle, request: &Request) -> Result<Value, Strin
             view.hide().map_err(|_| "Creazione scheda non riuscita")?;
         }
         "activate" => {
-            let labels = app.state::<BrowserState>().0.lock().map_err(|_| "Stato non disponibile")?.clone();
-            for item in labels {
-                if let Some(view) = app.get_webview(&item) {
-                    if item == *label { view.show().map_err(|_| "Scheda non disponibile")?; }
-                    else { let _ = view.hide(); }
+            app.state::<PresentationState>().0.lock().map_err(|_|"Stato non disponibile")?.active=Some(label.clone());
+            sync_visibility(app)?;
+            state(app, label);
+        }
+        "overlay" => {
+            let open=request.data.get("open").and_then(Value::as_bool).ok_or("Stato pannello non valido")?;
+            app.state::<PresentationState>().0.lock().map_err(|_|"Stato non disponibile")?.overlay_open=open;
+            sync_visibility(app)?;
+        }
+        #[cfg(windows)]
+        "visibility" if crate::smoke_mode() => {
+            let labels=app.state::<BrowserState>().0.lock().map_err(|_|"Stato non disponibile")?.clone();
+            let mut visible=0;
+            for label in labels {
+                if let Some(view)=app.get_webview(&label) {
+                    let (tx,rx)=std::sync::mpsc::channel();
+                    view.with_webview(move|platform|unsafe{
+                        let mut flag=Default::default();
+                        let result=platform.controller().IsVisible(&mut flag).map(|_|flag.as_bool()).unwrap_or(false);
+                        let _=tx.send(result);
+                    }).map_err(|_|"Visibilità non disponibile")?;
+                    if rx.recv_timeout(std::time::Duration::from_secs(5)).map_err(|_|"Verifica visibilità scaduta")? {visible+=1;}
                 }
             }
-            state(app, label);
+            return Ok(json!({"visible":visible}));
         }
         "hide" => { if let Some(view)=app.get_webview(label) { view.hide().map_err(|_|"Scheda non disponibile")?; } }
         "bounds" => {
