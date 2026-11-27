@@ -6,7 +6,7 @@
 
 Il progetto usa i motori già aggiornati dal sistema e **non compila un fork completo di Chromium**. Questo permette build sui runner standard gratuiti di GitHub Actions, senza server a pagamento o checkout del motore da 100 GB. I moduli CosmoNet sono componenti propri: non equivalgono al supporto completo delle estensioni Chrome.
 
-**Versione in preparazione: 0.3.1.** Introduce interfaccia mobile, Impostazioni e controllo degli aggiornamenti dalle release GitHub. La prima versione pubblicata è la [0.3.0](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.0): Windows ha superato il test con caricamento HTTP reale, indietro/avanti e gestione delle schede; l'APK scaricato ha superato la verifica di checksum, firma e identità. Il primo avvio su telefono è stato confermato dall'utente. Il collaudo completo delle nuove funzioni Android resta da effettuare. Per ogni revisione consultare l'esito del workflow e le note della release.
+**Versione di sviluppo: [0.3.1](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.1).** Introduce interfaccia mobile, Impostazioni e controllo degli aggiornamenti dalle release GitHub. La [build Windows e Android è riuscita](https://github.com/CosmoNetinfo/cosmonet-browser/actions/runs/46052225697). La portable scaricata ha superato il test HTTP reale, indietro/avanti e gestione delle schede; l'APK ha superato checksum, firma e verifica identità, mantenendo il certificato della 0.3.0. Il primo avvio della 0.3.0 su telefono è stato confermato dall'utente. Il collaudo completo delle nuove funzioni Android resta da effettuare. Per ogni revisione consultare il workflow e le note della release.
 
 ## Schermate reali
 
@@ -22,7 +22,7 @@ Queste immagini provengono dalla finestra dell'app Windows, con profilo di test 
 
 ## Download di sviluppo: installer, portable e APK
 
-La **[release v0.3.0](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.0)** contiene installer Windows, portable, APK Android, guida di installazione e `SHA256SUMS`. È una pre-release di sviluppo. Le [note dettagliate](docs/releases/v0.3.0.md) riportano requisiti, verifiche e limiti. I file pubblicati nella release restano disponibili oltre la scadenza degli artefatti Actions.
+La **[release v0.3.1](https://github.com/CosmoNetinfo/cosmonet-browser/releases/tag/v0.3.1)** contiene installer Windows, portable, APK Android, guida di installazione e `SHA256SUMS`. È una pre-release di sviluppo. Le [note dettagliate](docs/releases/v0.3.1.md) riportano requisiti, verifiche e limiti. I file pubblicati nella release restano disponibili oltre la scadenza degli artefatti Actions.
 
 Per le build successive aprire [GitHub Actions → Build Windows installer and Android APK](https://github.com/CosmoNetinfo/cosmonet-browser/actions/workflows/build-apps.yml), scegliere un'esecuzione **riuscita** e scorrere fino ad **Artifacts**:
 
@@ -62,9 +62,9 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 
 ### Leggerezza, RAM e tempi di avvio
 
-La build Windows del commit `2ee7fc9`, prodotta da GitHub Actions e scaricata per il collaudo, misura **4.267.008 byte (~4,27 MB) per la portable** e **1.460.289 byte (~1,46 MB) per l'installer**. La portable è stata avviata da una cartella separata e ha superato il test di navigazione HTTP, indietro/avanti e gestione delle schede. Queste dimensioni escludono il runtime WebView2 condiviso con il sistema e i dati del profilo; possono cambiare nelle build successive.
+La build 0.3.1 del commit `5624127`, prodotta da GitHub Actions e scaricata per il collaudo, misura **4.849.152 byte (~4,85 MB) per la portable** e **1.662.036 byte (~1,66 MB) per l'installer**. La portable è stata avviata da una cartella separata e ha superato il test di navigazione HTTP, indietro/avanti e gestione delle schede. Queste dimensioni escludono il runtime WebView2 condiviso con il sistema e i dati del profilo; possono cambiare nelle build successive.
 
-L'APK ARM64 del commit `4646147` misura **7.356.499 byte (~7,36 MB)**, richiede Android 9+ e usa l'identificativo `info.cosmonet.browser`, versione `0.3.0`. La firma personale APK v2 è stata verificata anche dopo il download. L'APK include il codice dell'app; il motore Android WebView è fornito e aggiornato dal sistema.
+L'APK ARM64 0.3.1 misura **7.378.887 byte (~7,38 MB)**, richiede Android 9+ e usa l'identificativo `info.cosmonet.browser`, versione `0.3.1` (versionCode `3001`). La firma personale APK v2 è stata verificata anche dopo il download ed è la stessa della 0.3.0. L'APK include il codice dell'app; il motore Android WebView è fornito e aggiornato dal sistema.
 
 La dimensione dell'eseguibile non misura la RAM: ogni scheda può usare processi del runtime. Non sono ancora pubblicati benchmark ripetibili di memoria o avvio sotto un secondo. Le future misure includeranno 1/10/30 schede, CPU inattiva, riproduzione video e hardware Android reale.
 
