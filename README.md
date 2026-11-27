@@ -6,7 +6,7 @@
 
 Il progetto usa i motori già aggiornati dal sistema e **non compila un fork completo di Chromium**. Questo permette build sui runner standard gratuiti di GitHub Actions, senza server a pagamento o checkout del motore da 100 GB. I moduli CosmoNet sono componenti propri: non equivalgono al supporto completo delle estensioni Chrome.
 
-**Versione di sviluppo: 0.3.0.** Il core Windows è stato compilato e collaudato con caricamento reale e gestione delle schede. La build Android e i pacchetti installabili vengono verificati dalla pipeline descritta sotto. Consultare sempre l'esito del workflow: la presenza del codice non dimostra che ogni funzione sia già collaudata su un telefono.
+**Versione di sviluppo: 0.3.0.** GitHub Actions ha prodotto installer e portable Windows e un APK Android ARM64 firmato: [prima esecuzione completa riuscita](https://github.com/CosmoNetinfo/cosmonet-browser/actions/runs/46010993952), commit `4646147`. Windows ha superato il test con caricamento HTTP reale, indietro/avanti e gestione delle schede. L'APK scaricato ha superato la verifica locale di checksum, firma e identità del pacchetto; il collaudo su telefono o emulatore è ancora da effettuare. Per le revisioni successive consultare sempre l'esito del relativo workflow.
 
 ## Schermate reali
 
@@ -39,7 +39,7 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 
 | Funzione | Implementazione | Verifica / limite |
 | --- | --- | --- |
-| Core Rust e Tauri 2 | Comandi nativi validati, dati locali, gestione schede | Compilazione Windows riuscita |
+| Core Rust e Tauri 2 | Comandi nativi validati, dati locali, gestione schede | Compilazione Windows e Android ARM64 riuscita |
 | Schede native integrate | Viste figlie nella finestra Windows; WebView native nel plugin Android | Test Windows: due schede create, attivate e chiuse |
 | Navigazione senza iframe | HTTP/HTTPS in WebView2 / Android WebView | Non aggira restrizioni OAuth, DRM o policy dei siti |
 | Barra indirizzi e ricerca | Navigazione, ricerca DuckDuckGo, URL e titolo aggiornati dal motore | Indietro/avanti nativi, ricarica e home |
@@ -52,13 +52,15 @@ Android richiede una firma per installare qualsiasi APK. Il progetto usa una chi
 | Moduli CosmoNet | Primo modulo: Lettura CosmoNet, limitato a cosmonet.info | Non ha accesso all'archivio credenziali |
 | Debug | DevTools nativi Windows e console Eruda inclusa localmente | Niente caricamento della console da CDN |
 | Download Android | DownloadManager, cartella download dell'app | Da verificare su telefono; nessuna esecuzione automatica dei file |
-| Installer e APK | Workflow su runner GitHub standard | Gli esiti e gli artefatti sono visibili in Actions |
+| Installer e APK | Workflow su runner GitHub standard | Prima build completa riuscita; firma APK e checksum verificati |
 | Aggiornamenti del browser | Non ancora implementati | Installazione manuale delle build di sviluppo |
 | Versione Linux | Rimandata | Ubuntu in Actions serve solo come macchina di compilazione Android |
 
 ### Leggerezza, RAM e tempi di avvio
 
 La build Windows del commit `2ee7fc9`, prodotta da GitHub Actions e scaricata per il collaudo, misura **4.267.008 byte (~4,27 MB) per la portable** e **1.460.289 byte (~1,46 MB) per l'installer**. La portable è stata avviata da una cartella separata e ha superato il test di navigazione HTTP, indietro/avanti e gestione delle schede. Queste dimensioni escludono il runtime WebView2 condiviso con il sistema e i dati del profilo; possono cambiare nelle build successive.
+
+L'APK ARM64 del commit `4646147` misura **7.356.499 byte (~7,36 MB)**, richiede Android 9+ e usa l'identificativo `info.cosmonet.browser`, versione `0.3.0`. La firma personale APK v2 è stata verificata anche dopo il download. L'APK include il codice dell'app; il motore Android WebView è fornito e aggiornato dal sistema.
 
 La dimensione dell'eseguibile non misura la RAM: ogni scheda può usare processi del runtime. Non sono ancora pubblicati benchmark ripetibili di memoria o avvio sotto un secondo. Le future misure includeranno 1/10/30 schede, CPU inattiva, riproduzione video e hardware Android reale.
 
