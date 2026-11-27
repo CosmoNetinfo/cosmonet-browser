@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import urllib.request
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "159.0.8154.34"
@@ -37,8 +38,18 @@ FILES = [
 
 def get(url):
     request = urllib.request.Request(url, headers={"User-Agent": "CosmoBrowser-build/0.2"})
-    with urllib.request.urlopen(request, timeout=90) as response:
-        return response.read()
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 3:
+                raise
+        time.sleep(2 ** attempt)
+    raise RuntimeError("Upstream unavailable after retries")
 
 
 def main():

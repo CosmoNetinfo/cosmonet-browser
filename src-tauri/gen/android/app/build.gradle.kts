@@ -15,7 +15,7 @@ val tauriProperties = Properties().apply {
 }
 
 android {
-    compileSdk = 37
+    compileSdk = 36
     namespace = "info.cosmonet.browser"
     defaultConfig {
         // Browsers may visit HTTP sites. TLS errors are never bypassed and the UI
@@ -23,7 +23,7 @@ android {
         manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "info.cosmonet.browser"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }

@@ -152,7 +152,7 @@ Il test nativo usa un profilo e una directory WebView2 isolati; verifica caricam
 
 ### Android
 
-Per ottenere l'APK **non serve Linux sul proprio PC**: può compilarlo GitHub Actions su Ubuntu. Per compilare localmente servono JDK, SDK Android 37, Build Tools 37, NDK 28.2.13676358 e il target Rust `aarch64-linux-android`, con `JAVA_HOME`, `ANDROID_HOME` e `NDK_HOME` configurati.
+Per ottenere l'APK **non serve Linux sul proprio PC**: può compilarlo GitHub Actions su Ubuntu. Per compilare localmente servono JDK, SDK Android 36, Build Tools 36, NDK 28.2.13676358 e il target Rust `aarch64-linux-android`, con `JAVA_HOME`, `ANDROID_HOME` e `NDK_HOME` configurati.
 
 ```sh
 npm ci --ignore-scripts

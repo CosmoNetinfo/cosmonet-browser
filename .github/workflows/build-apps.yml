@@ -84,9 +84,6 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    env:
-      COSMO_ANDROID_KEYSTORE_B64: ${{ secrets.COSMO_ANDROID_KEYSTORE_B64 }}
-      COSMO_ANDROID_STORE_PASSWORD: ${{ secrets.COSMO_ANDROID_STORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -104,7 +101,7 @@ jobs:
         with:
           packages: platform-tools
       - name: Install Android platform and NDK
-        run: sdkmanager 'platforms;android-37' 'build-tools;37.0.0' 'ndk;28.2.13676358'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -114,8 +111,13 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run prepare:app
       - name: Prepare private personal signing key
+        env:
+          COSMO_ANDROID_KEYSTORE_B64: ${{ secrets.COSMO_ANDROID_KEYSTORE_B64 }}
+          COSMO_ANDROID_STORE_PASSWORD: ${{ secrets.COSMO_ANDROID_STORE_PASSWORD }}
         run: node tools/android-keystore.cjs
       - name: Build signed personal Android APK
+        env:
+          COSMO_ANDROID_STORE_PASSWORD: ${{ secrets.COSMO_ANDROID_STORE_PASSWORD }}
         run: |
           export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
           npm run build:android
@@ -124,7 +126,7 @@ jobs:
           mkdir -p dist/android
           find src-tauri/gen/android -type f -name '*.apk' -path '*/outputs/*' ! -name '*unsigned*' -print -exec cp {} dist/android/ \;
           test -n "$(find dist/android -name '*.apk' -print -quit)"
-          for apk in dist/android/*.apk; do "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify "$apk"; done
+          for apk in dist/android/*.apk; do "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$apk"; done
           (cd dist/android && sha256sum *.apk > SHA256SUMS)
       - name: Remove temporary signing material
         if: always()

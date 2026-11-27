@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "info.cosmonet.browser.nativebridge"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig { minSdk = 28 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
